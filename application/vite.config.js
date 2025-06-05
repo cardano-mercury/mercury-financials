@@ -17,4 +17,13 @@ export default defineConfig({
             },
         }),
     ],
+    build: {
+        chunkSizeWarningLimit: 11240,
+    },
+    server: {
+        port: 8601,
+        hmr: {
+            host: '0.0.0.0'
+        }
+    },
 });

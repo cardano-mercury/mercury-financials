@@ -1,0 +1,98 @@
+services:
+
+  # Web Service
+  mercuryfinancials-web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: mercuryfinancials-web
+    restart: unless-stopped
+    tty: true
+    networks: [ mercuryfinancials ]
+    volumes:
+      - ../application:/home/mercuryfinancials/application
+    ports:
+      - "8600:80"   # Laravel
+      - "8601:8601" # Vite
+    depends_on:
+      - mercuryfinancials-mysql
+      - mercuryfinancials-redis
+    links:
+      - mercuryfinancials-mysql
+      - mercuryfinancials-redis
+
+  # MySQL Service
+  mercuryfinancials-mysql:
+    image: mysql:8.0
+    container_name: mercuryfinancials-mysql
+    restart: unless-stopped
+    tty: true
+    networks: [ mercuryfinancials ]
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: mercuryfinancials
+      MYSQL_USER: mercuryfinancials
+      MYSQL_PASSWORD: 123456
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+    volumes: [ "mysql:/var/lib/mysql:cached" ]
+    ports: [ "36000:3306" ]
+
+  # Redis Service
+  mercuryfinancials-redis:
+    container_name: mercuryfinancials-redis
+    image: redis:6
+    restart: unless-stopped
+    volumes:
+      - redis:/data
+    networks: [ mercuryfinancials ]
+
+  # Horizon Service
+  mercuryfinancials-horizon:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: mercuryfinancials-horizon
+    restart: unless-stopped
+    tty: true
+    networks: [ mercuryfinancials ]
+    volumes:
+      - ../application:/home/mercuryfinancials/application
+    depends_on:
+      - mercuryfinancials-mysql
+      - mercuryfinancials-redis
+    links:
+      - mercuryfinancials-mysql
+      - mercuryfinancials-redis
+    command: "php artisan horizon"
+
+  # Cron Service
+  mercuryfinancials-cron:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: mercuryfinancials-cron
+    restart: unless-stopped
+    tty: true
+    networks: [ mercuryfinancials ]
+    volumes:
+      - ../application:/home/mercuryfinancials/application
+    depends_on:
+      - mercuryfinancials-mysql
+      - mercuryfinancials-redis
+    links:
+      - mercuryfinancials-mysql
+      - mercuryfinancials-redis
+    command: "php artisan schedule:work"
+
+volumes:
+  mysql:
+    driver: local
+  redis:
+
+networks:
+  mercuryfinancials:
+    driver: bridge
