@@ -7,6 +7,7 @@ import {
 	type TransactionUtxos
 } from '$lib/server/blockfrost';
 import { parseTransaction, type Flow } from './parse';
+import { defaultCategoryPath, getAccountIdByPath } from '$lib/server/accounts';
 
 /** A Blockfrost page is 100 rows; a full page means there may be more to fetch. */
 const PAGE_SIZE = 100;
@@ -82,6 +83,12 @@ export async function syncWalletPage(walletId: number): Promise<SyncPageResult> 
 
 	const bf = new BlockfrostClient();
 
+	const ownAddresses = new Set(
+		(await db.query.addresses.findMany({ where: eq(addresses.isOwn, true) })).map(
+			(a) => a.bech32
+		)
+	);
+
 	const [latest] = await db
 		.select({ blockHeight: transactions.blockHeight })
 		.from(transactions)
@@ -105,6 +112,15 @@ export async function syncWalletPage(walletId: number): Promise<SyncPageResult> 
 		const utxos: TransactionUtxos = await bf.getTransactionUtxos(item.tx_hash);
 		const withdrawals: TransactionWithdrawal[] =
 			detail.withdrawal_count > 0 ? await bf.getTransactionWithdrawals(item.tx_hash) : [];
+
+		const parsed = parseTransaction({
+			hash: detail.hash,
+			walletAddress: wallet.address.bech32,
+			stakeAddress: wallet.address.stakeKey,
+			fees: BigInt(detail.fees),
+			utxos,
+			withdrawals
+		});
 
 		const [row] = await db
 			.insert(transactions)
@@ -134,6 +150,8 @@ export async function syncWalletPage(walletId: number): Promise<SyncPageResult> 
 				outputAmount: detail.output_amount,
 				withdrawals,
 				utxoDetail: utxos,
+				netLovelace: parsed.netLovelace,
+				walletIsInput: parsed.walletIsInput,
 				parsedAt: new Date()
 			})
 			.onConflictDoNothing()
@@ -143,16 +161,18 @@ export async function syncWalletPage(walletId: number): Promise<SyncPageResult> 
 		if (!row) continue;
 		created++;
 
-		const { tags, flows } = parseTransaction({
-			hash: detail.hash,
-			walletAddress: wallet.address.bech32,
-			stakeAddress: wallet.address.stakeKey,
-			fees: BigInt(detail.fees),
-			utxos,
-			withdrawals
-		});
+		await persistFlows(row.id, wallet.addressId, parsed.tags, parsed.flows);
 
-		await persistFlows(row.id, wallet.addressId, tags, flows);
+		const path = defaultCategoryPath({
+			netLovelace: parsed.netLovelace,
+			hasWithdrawal: parsed.tags.includes('withdrawal'),
+			counterparties: parsed.flows.map((f) => f.counterparty),
+			ownAddresses
+		});
+		await db
+			.update(transactions)
+			.set({ accountId: await getAccountIdByPath(path) })
+			.where(eq(transactions.id, row.id));
 	}
 
 	await db.update(wallets).set({ lastSyncedAt: new Date() }).where(eq(wallets.id, walletId));

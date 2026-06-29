@@ -55,6 +55,9 @@ export const transactions = pgTable(
 		walletId: integer('wallet_id')
 			.notNull()
 			.references(() => wallets.id, { onDelete: 'cascade' }),
+		// The contra account this transaction is categorised to (the non-cash leg). Defaulted on
+		// ingest, overridable by the user. Null only until first categorised.
+		accountId: integer('account_id').references(() => accounts.id),
 		hash: text('hash').notNull(),
 		block: text('block').notNull(),
 		blockHeight: integer('block_height').notNull(),
@@ -67,6 +70,11 @@ export const transactions = pgTable(
 		deposit: bigint('deposit', { mode: 'bigint' })
 			.notNull()
 			.default(sql`0`),
+		// Wallet's net lovelace change (the Cash leg) and whether it paid the fee. Derived at ingest.
+		netLovelace: bigint('net_lovelace', { mode: 'bigint' })
+			.notNull()
+			.default(sql`0`),
+		walletIsInput: boolean('wallet_is_input').notNull().default(false),
 		size: integer('size').notNull().default(0),
 		invalidBefore: text('invalid_before'),
 		invalidHereafter: text('invalid_hereafter'),
@@ -137,6 +145,46 @@ export const transactionTags = pgTable(
 	(t) => [uniqueIndex('transaction_tags_tx_name_idx').on(t.transactionId, t.name)]
 );
 
+/**
+ * Single instance-wide entity. The local instance is one organisation; this row carries the name
+ * that prints on the report headers ("Name of Entity" in the sample statements).
+ */
+export const entitySettings = pgTable('entity_settings', {
+	id: serial('id').primaryKey(),
+	name: text('name').notNull().default('Your Entity'),
+	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+});
+
+export type Statement = 'balance_sheet' | 'profit_loss';
+export type NormalBalance = 'debit' | 'credit';
+
+/**
+ * Chart of accounts, seeded from the finance-docs spreadsheet. Each row is a leaf account a
+ * transaction can be categorised to. `section` + `subgroups` reproduce the statement hierarchy for
+ * report roll-ups; `path` is the human breadcrumb used in the category dropdown.
+ *
+ * `isCash` marks the wallet's own Cash and cash equivalents account (the automatic leg of every
+ * transaction). `isInternalTransfer` is a synthetic account used to net transfers between our own
+ * wallets; it has no statement and is excluded from the reports.
+ */
+export const accounts = pgTable(
+	'accounts',
+	{
+		id: serial('id').primaryKey(),
+		statement: text('statement').$type<Statement | null>(),
+		section: text('section'),
+		subgroups: jsonb('subgroups').$type<string[]>().notNull().default([]),
+		name: text('name').notNull(),
+		path: text('path').notNull(),
+		normalBalance: text('normal_balance').$type<NormalBalance>().notNull(),
+		isCash: boolean('is_cash').notNull().default(false),
+		isInternalTransfer: boolean('is_internal_transfer').notNull().default(false),
+		sortOrder: integer('sort_order').notNull().default(0)
+	},
+	(t) => [uniqueIndex('accounts_path_idx').on(t.path)]
+);
+
 export const addressesRelations = relations(addresses, ({ many, one }) => ({
 	wallet: one(wallets, { fields: [addresses.id], references: [wallets.addressId] }),
 	outgoing: many(outputs, { relationName: 'from' }),
@@ -150,8 +198,13 @@ export const walletsRelations = relations(wallets, ({ one, many }) => ({
 
 export const transactionsRelations = relations(transactions, ({ one, many }) => ({
 	wallet: one(wallets, { fields: [transactions.walletId], references: [wallets.id] }),
+	account: one(accounts, { fields: [transactions.accountId], references: [accounts.id] }),
 	outputs: many(outputs),
 	tags: many(transactionTags)
+}));
+
+export const accountsRelations = relations(accounts, ({ many }) => ({
+	transactions: many(transactions)
 }));
 
 export const outputsRelations = relations(outputs, ({ one }) => ({
@@ -183,3 +236,5 @@ export type Wallet = typeof wallets.$inferSelect;
 export type Transaction = typeof transactions.$inferSelect;
 export type Output = typeof outputs.$inferSelect;
 export type TransactionTag = typeof transactionTags.$inferSelect;
+export type Account = typeof accounts.$inferSelect;
+export type EntitySettings = typeof entitySettings.$inferSelect;

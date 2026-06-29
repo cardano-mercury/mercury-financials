@@ -30,6 +30,10 @@ export interface Flow {
 export interface ParseResult {
 	tags: string[];
 	flows: Flow[];
+	/** True wallet lovelace change (outputs minus inputs); the Cash leg for the ledger. */
+	netLovelace: bigint;
+	/** Whether the wallet provided any input, i.e. whether it paid this transaction's fee. */
+	walletIsInput: boolean;
 }
 
 function sumByUnit(amounts: { unit: string; quantity: string }[], into: Map<string, bigint>) {
@@ -51,12 +55,18 @@ export function parseTransaction(params: {
 	const input = new Map<string, bigint>();
 	const output = new Map<string, bigint>();
 
+	let walletIsInput = false;
 	for (const i of utxos.inputs) {
-		if (i.address === walletAddress) sumByUnit(i.amount, input);
+		if (i.address === walletAddress) {
+			walletIsInput = true;
+			sumByUnit(i.amount, input);
+		}
 	}
 	for (const o of utxos.outputs) {
 		if (o.address === walletAddress) sumByUnit(o.amount, output);
 	}
+
+	const netLovelace = (output.get(LOVELACE) ?? 0n) - (input.get(LOVELACE) ?? 0n);
 
 	const tags = new Set<string>();
 	if (stakeAddress) {
@@ -150,7 +160,7 @@ export function parseTransaction(params: {
 	if (sawSpend) tags.add('spend');
 	if (sawReceive) tags.add('receive');
 
-	return { tags: [...tags], flows };
+	return { tags: [...tags], flows, netLovelace, walletIsInput };
 }
 
 function min(a: bigint, b: bigint): bigint {
