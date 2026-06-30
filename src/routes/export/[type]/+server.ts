@@ -10,7 +10,9 @@ import {
 	type CsvFile
 } from '$lib/server/export/csv';
 
-export const GET: RequestHandler = async ({ params }) => {
+export const GET: RequestHandler = async ({ params, locals }) => {
+	if (!locals.user) throw error(401, 'Sign in to export.');
+
 	let file: CsvFile;
 
 	if (params.type === 'register') {

@@ -2,7 +2,7 @@ import { env } from '$env/dynamic/private';
 import { createAuth } from '@cardano-mercury/core/auth';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
 import { getRequestEvent } from '$app/server';
-import { db } from '$lib/server/db';
+import { authDb } from '$lib/server/db';
 
 /**
  * Better Auth for financials, built from mercury-core's shared factory so it stays in step with the
@@ -10,7 +10,7 @@ import { db } from '$lib/server/db';
  * (e.g. .cardano-mercury.com) in production for cross-app SSO.
  */
 export const auth = createAuth({
-	db,
+	db: authDb,
 	secret: env.BETTER_AUTH_SECRET,
 	baseURL: env.ORIGIN,
 	issuer: 'Mercury Financials',

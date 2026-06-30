@@ -19,7 +19,7 @@
 		<div class="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
 			<a href="/" class="mono text-lg font-bold text-mercury">Mercury</a>
 
-			{#if data.hasWallets}
+			{#if data.user && data.hasWallets}
 				<nav class="flex items-center gap-1">
 					{#each nav as item (item.href)}
 						<a
@@ -34,7 +34,16 @@
 				</nav>
 			{/if}
 
-			<span class="eyebrow hidden sm:block">{data.entityName}</span>
+			{#if data.user}
+				<div class="flex items-center gap-3">
+					<span class="eyebrow hidden sm:block">{data.entityName}</span>
+					<form method="POST" action="/signout">
+						<button type="submit" class="text-sm text-ink-400 hover:text-ink-900"
+							>Sign out</button
+						>
+					</form>
+				</div>
+			{/if}
 		</div>
 	</header>
 

@@ -240,8 +240,3 @@ export type Output = typeof outputs.$inferSelect;
 export type TransactionTag = typeof transactionTags.$inferSelect;
 export type Account = typeof accounts.$inferSelect;
 export type EntitySettings = typeof entitySettings.$inferSelect;
-
-// Shared Better Auth tables (user/session/account/verification/two_factor) from mercury-core.
-// Re-exported so the app's drizzle client and drizzle-kit both see them; mercury-core owns their
-// migrations.
-export * from '@cardano-mercury/core/db';
