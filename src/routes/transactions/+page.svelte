@@ -1,6 +1,15 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import { formatAda } from '$lib/money';
+	import {
+		ChevronRight,
+		ChevronDown,
+		Copy,
+		Check,
+		ExternalLink,
+		ArrowUp,
+		ArrowDown
+	} from '@lucide/svelte';
 
 	let { data, form } = $props();
 
@@ -50,11 +59,9 @@
 		if (sortKey === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
 		else {
 			sortKey = key;
-			sortDir = key === 'date' ? 'desc' : 'desc';
+			sortDir = 'desc';
 		}
 	}
-
-	const arrow = (key: SortKey) => (sortKey === key ? (sortDir === 'asc' ? '↑' : '↓') : '');
 
 	async function copy(text: string) {
 		try {
@@ -72,6 +79,21 @@
 		{ id: 'received', label: 'Received' }
 	] as const;
 </script>
+
+{#snippet sortHead(key: SortKey, label: string, alignRight = false)}
+	<th class="py-2 pr-3 font-medium" class:text-right={alignRight}>
+		<button
+			class="inline-flex items-center gap-1 hover:text-ink-900"
+			class:flex-row-reverse={alignRight}
+			onclick={() => toggleSort(key)}
+		>
+			<span>{label}</span>
+			{#if sortKey === key}
+				{#if sortDir === 'asc'}<ArrowUp size={13} />{:else}<ArrowDown size={13} />{/if}
+			{/if}
+		</button>
+	</th>
+{/snippet}
 
 <div class="card p-6">
 	<div class="flex flex-wrap items-center justify-between gap-3">
@@ -126,29 +148,15 @@
 				<col class="w-32" />
 				<col class="w-24" />
 				<col class="w-56" />
-				<col class="w-16" />
+				<col class="w-12" />
 			</colgroup>
 			<thead>
 				<tr class="text-left text-ink-400">
-					<th
-						class="cursor-pointer py-2 pr-3 font-medium"
-						onclick={() => toggleSort('date')}
-					>
-						Date {arrow('date')}
-					</th>
+					{@render sortHead('date', 'Date')}
 					<th class="py-2 pr-3 font-medium">Description</th>
-					<th
-						class="cursor-pointer py-2 pr-3 text-right font-medium"
-						onclick={() => toggleSort('sent')}>Sent {arrow('sent')}</th
-					>
-					<th
-						class="cursor-pointer py-2 pr-3 text-right font-medium"
-						onclick={() => toggleSort('received')}>Received {arrow('received')}</th
-					>
-					<th
-						class="cursor-pointer py-2 pr-3 text-right font-medium"
-						onclick={() => toggleSort('fee')}>Fee {arrow('fee')}</th
-					>
+					{@render sortHead('sent', 'Sent', true)}
+					{@render sortHead('received', 'Received', true)}
+					{@render sortHead('fee', 'Fee', true)}
 					<th class="py-2 pr-3 font-medium">Purpose</th>
 					<th class="py-2 font-medium"></th>
 				</tr>
@@ -209,14 +217,18 @@
 								</select>
 							</form>
 						</td>
-						<td class="py-2.5 text-right">
+						<td class="py-2.5">
 							<button
-								class="text-ink-400 hover:text-ink-900"
-								title="Details"
+								class="inline-flex items-center justify-center rounded p-1 text-ink-400 hover:bg-ink-200 hover:text-ink-900"
 								aria-label="Toggle details"
+								aria-expanded={expanded === row.id}
 								onclick={() => (expanded = expanded === row.id ? null : row.id)}
 							>
-								{expanded === row.id ? '▾' : '▸'}
+								{#if expanded === row.id}
+									<ChevronDown size={18} />
+								{:else}
+									<ChevronRight size={18} />
+								{/if}
 							</button>
 						</td>
 					</tr>
@@ -224,31 +236,37 @@
 						<tr class="border-t border-ink-100 bg-surface-2">
 							<td colspan="7" class="px-2 py-4">
 								<div class="grid gap-4 sm:grid-cols-2">
-									<div>
+									<div class="min-w-0">
 										<p class="eyebrow mb-1">Transaction</p>
-										<div class="flex items-center gap-2">
-											<span class="mono break-all text-xs text-ink-600"
-												>{row.hash}</span
-											>
+										<p class="mono break-all text-xs text-ink-600">
+											{row.hash}
+										</p>
+										<div class="mt-2 flex items-center gap-4 text-xs">
 											<button
-												class="text-xs text-mercury-ink"
+												class="inline-flex items-center gap-1 whitespace-nowrap text-mercury-ink"
 												onclick={() => copy(row.hash)}
 											>
-												{copied === row.hash ? 'Copied' : 'Copy'}
+												{#if copied === row.hash}
+													<Check size={14} /> Copied
+												{:else}
+													<Copy size={14} /> Copy hash
+												{/if}
 											</button>
 											<a
-												class="text-xs text-mercury-ink"
+												class="inline-flex items-center gap-1 whitespace-nowrap text-mercury-ink"
 												href={`${data.explorerBase}${row.hash}`}
 												target="_blank"
-												rel="noreferrer">Explorer ↗</a
+												rel="noreferrer"
 											>
+												<ExternalLink size={14} /> Explorer
+											</a>
 										</div>
 										<p class="mt-2 text-xs text-ink-400">
 											Net {ada(row.net)} ADA · fee {ada(row.fee)} ADA
 											{#if row.tags.length}· {row.tags.join(', ')}{/if}
 										</p>
 									</div>
-									<div>
+									<div class="min-w-0">
 										<p class="eyebrow mb-1">
 											Counterparties ({row.counterparties.length})
 										</p>
@@ -262,10 +280,15 @@
 														{c.named ? c.label : c.bech32}
 													</span>
 													<button
-														class="shrink-0 text-xs text-mercury-ink"
+														class="shrink-0 text-mercury-ink"
+														aria-label="Copy address"
 														onclick={() => copy(c.bech32)}
 													>
-														{copied === c.bech32 ? 'Copied' : 'Copy'}
+														{#if copied === c.bech32}
+															<Check size={14} />
+														{:else}
+															<Copy size={14} />
+														{/if}
 													</button>
 												</li>
 											{/each}
