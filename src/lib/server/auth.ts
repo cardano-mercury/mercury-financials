@@ -1,24 +1,19 @@
 import { env } from '$env/dynamic/private';
-import { betterAuth } from 'better-auth/minimal';
-import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { createAuth } from '@cardano-mercury/core/auth';
 import { sveltekitCookies } from 'better-auth/svelte-kit';
-import { twoFactor } from 'better-auth/plugins';
 import { getRequestEvent } from '$app/server';
 import { db } from '$lib/server/db';
 
 /**
- * Better Auth, kept in step with mercury-tokenomics so the apps can share one Postgres database
- * and a single account set. Same config shape, env vars (ORIGIN, BETTER_AUTH_SECRET), and table
- * conventions; the difference is provider 'pg' here vs 'sqlite' there, which is why the shared DB
- * needs both apps on Postgres.
+ * Better Auth for financials, built from mercury-core's shared factory so it stays in step with the
+ * other Mercury apps. The app injects its env and the SvelteKit cookie plugin; set COOKIE_DOMAIN
+ * (e.g. .cardano-mercury.com) in production for cross-app SSO.
  */
-export const auth = betterAuth({
-	baseURL: env.ORIGIN,
+export const auth = createAuth({
+	db,
 	secret: env.BETTER_AUTH_SECRET,
-	database: drizzleAdapter(db, { provider: 'pg' }),
-	emailAndPassword: { enabled: true },
-	plugins: [
-		twoFactor({ issuer: 'Mercury Financials' }),
-		sveltekitCookies(getRequestEvent) // keep last
-	]
+	baseURL: env.ORIGIN,
+	issuer: 'Mercury Financials',
+	cookieDomain: env.COOKIE_DOMAIN || undefined,
+	plugins: [sveltekitCookies(getRequestEvent)] // keep last
 });

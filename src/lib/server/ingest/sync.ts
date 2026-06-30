@@ -2,7 +2,7 @@ import { and, desc, eq, lt } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { addresses, outputs, transactionTags, transactions, wallets } from '$lib/server/db/schema';
 import {
-	BlockfrostClient,
+	createBlockfrost,
 	type TransactionWithdrawal,
 	type TransactionUtxos
 } from '$lib/server/blockfrost';
@@ -82,7 +82,7 @@ export async function syncWalletPage(walletId: number): Promise<SyncPageResult> 
 	});
 	if (!wallet) throw new Error(`Wallet ${walletId} not found`);
 
-	const bf = new BlockfrostClient();
+	const bf = createBlockfrost();
 	const isOwn = makeOwnershipTest(wallet.address.bech32, wallet.address.stakeKey);
 
 	const ownAddresses = new Set(

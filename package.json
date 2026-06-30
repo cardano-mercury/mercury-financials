@@ -48,6 +48,7 @@
 		"vitest": "^4.1.9"
 	},
 	"dependencies": {
+		"@cardano-mercury/core": "file:../mercury-core",
 		"@lucide/svelte": "^1.22.0",
 		"@meshsdk/core": "^1.9.1",
 		"better-auth": "~1.4.21",

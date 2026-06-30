@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { addresses, wallets } from '$lib/server/db/schema';
-import { BlockfrostClient } from '$lib/server/blockfrost';
+import { createBlockfrost } from '$lib/server/blockfrost';
 import { enqueueWalletSync } from '$lib/server/ingest/queue';
 
 export class WalletError extends Error {}
@@ -20,7 +20,7 @@ export async function createWallet(input: { name: string; address: string }) {
 	const existingName = await db.query.wallets.findFirst({ where: eq(wallets.name, name) });
 	if (existingName) throw new WalletError('A wallet with that name already exists.');
 
-	const bf = new BlockfrostClient();
+	const bf = createBlockfrost();
 
 	// Accept a bech32 address or an ADA Handle ($name).
 	let bech32 = entered;
