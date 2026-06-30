@@ -122,15 +122,25 @@ export class BlockfrostClient {
 			}
 		}
 
-		const res = await fetch(url, {
-			headers: { project_id: this.projectId, accept: 'application/json' }
-		});
+		// Retry on rate limits (429) and transient server errors with exponential backoff, since
+		// paging a wallet's full history makes many calls and will brush against Blockfrost limits.
+		const maxAttempts = 6;
+		for (let attempt = 0; ; attempt++) {
+			const res = await fetch(url, {
+				headers: { project_id: this.projectId, accept: 'application/json' }
+			});
 
-		if (!res.ok) {
-			throw new BlockfrostError(res.status, path, await res.text());
+			if (res.ok) return (await res.json()) as T;
+
+			const retryable = res.status === 429 || res.status >= 500;
+			if (!retryable || attempt >= maxAttempts - 1) {
+				throw new BlockfrostError(res.status, path, await res.text());
+			}
+
+			const retryAfter = Number(res.headers.get('retry-after'));
+			const delay = retryAfter > 0 ? retryAfter * 1000 : Math.min(500 * 2 ** attempt, 10000);
+			await new Promise((r) => setTimeout(r, delay));
 		}
-
-		return (await res.json()) as T;
 	}
 
 	getAddress(address: string): Promise<AddressInfo> {
