@@ -1,15 +1,17 @@
 import { fail } from '@sveltejs/kit';
+import { env } from '$env/dynamic/private';
 import type { Actions, PageServerLoad } from './$types';
 import { db } from '$lib/server/db';
 import { wallets } from '$lib/server/db/schema';
 import { loadTransactionRegister } from '$lib/server/transactions';
 import { getChartOfAccounts, setTransactionCategory } from '$lib/server/accounts';
 import { enqueueWalletSync } from '$lib/server/ingest/queue';
-import { formatAda } from '$lib/money';
 
-function shortHash(hash: string) {
-	return `${hash.slice(0, 6)}…${hash.slice(-4)}`;
-}
+const EXPLORER: Record<string, string> = {
+	mainnet: 'https://cardanoscan.io/transaction/',
+	preprod: 'https://preprod.cardanoscan.io/transaction/',
+	preview: 'https://preview.cardanoscan.io/transaction/'
+};
 
 export const load: PageServerLoad = async () => {
 	const [register, accounts] = await Promise.all([
@@ -18,26 +20,37 @@ export const load: PageServerLoad = async () => {
 	]);
 
 	return {
+		explorerBase: EXPLORER[env.BLOCKFROST_NETWORK ?? 'mainnet'] ?? EXPLORER.mainnet,
 		rows: register.map((r) => ({
 			id: r.id,
+			blockTime: r.blockTime,
 			date: new Date(r.blockTime * 1000).toISOString().slice(0, 10),
 			hash: r.hash,
-			hashShort: shortHash(r.hash),
-			counterparty: r.counterparty || '—',
-			sent: r.sent > 0n ? formatAda(r.sent, { decimals: 2 }) : '',
-			received: r.received > 0n ? formatAda(r.received, { decimals: 2 }) : '',
-			fee: formatAda(r.fees, { decimals: 2 }),
+			counterparties: r.counterparties,
+			sent: r.sent.toString(),
+			received: r.received.toString(),
+			fee: r.fees.toString(),
+			net: r.netLovelace.toString(),
 			accountId: r.accountId,
 			tags: r.tags
 		})),
-		accounts: accounts
-			.filter((a) => !a.isInternalTransfer)
-			.map((a) => ({ id: a.id, path: a.path, name: a.name })),
-		internalTransfer: accounts
-			.filter((a) => a.isInternalTransfer)
-			.map((a) => ({ id: a.id, path: a.path, name: a.name }))
+		// Grouped for the dropdown: leaf names with the full path as a tooltip.
+		accountGroups: groupAccounts(accounts)
 	};
 };
+
+function groupAccounts(accounts: Awaited<ReturnType<typeof getChartOfAccounts>>) {
+	const groups = new Map<string, { id: number; name: string; path: string }[]>();
+	for (const a of accounts) {
+		const key = a.isInternalTransfer
+			? 'Transfers'
+			: `${a.statement === 'profit_loss' ? 'Profit & Loss' : 'Balance Sheet'} · ${a.section}`;
+		const list = groups.get(key) ?? [];
+		list.push({ id: a.id, name: a.name, path: a.path });
+		groups.set(key, list);
+	}
+	return [...groups.entries()].map(([label, options]) => ({ label, options }));
+}
 
 export const actions: Actions = {
 	categorize: async ({ request }) => {

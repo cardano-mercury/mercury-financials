@@ -1,9 +1,76 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { formatAda } from '$lib/money';
 
 	let { data, form } = $props();
 
-	const options = $derived([...data.accounts, ...data.internalTransfer]);
+	type Row = (typeof data.rows)[number];
+	type SortKey = 'date' | 'sent' | 'received' | 'fee';
+
+	let query = $state('');
+	let direction = $state<'all' | 'sent' | 'received'>('all');
+	let sortKey = $state<SortKey>('date');
+	let sortDir = $state<'asc' | 'desc'>('desc');
+	let expanded = $state<number | null>(null);
+	let copied = $state('');
+
+	const ada = (lovelace: string) => formatAda(BigInt(lovelace), { decimals: 2 });
+
+	function matches(r: Row, q: string) {
+		if (r.hash.includes(q) || r.date.includes(q)) return true;
+		if (r.tags.some((t) => t.includes(q))) return true;
+		return r.counterparties.some(
+			(c) => c.label.toLowerCase().includes(q) || c.bech32.includes(q)
+		);
+	}
+
+	function sortValue(r: Row, key: SortKey): bigint {
+		if (key === 'date') return BigInt(r.blockTime);
+		if (key === 'sent') return BigInt(r.sent);
+		if (key === 'received') return BigInt(r.received);
+		return BigInt(r.fee);
+	}
+
+	const visible = $derived.by(() => {
+		const q = query.trim().toLowerCase();
+		let rows = data.rows.filter((r) => {
+			if (direction === 'sent' && BigInt(r.sent) === 0n) return false;
+			if (direction === 'received' && BigInt(r.received) === 0n) return false;
+			return q ? matches(r, q) : true;
+		});
+		const dir = sortDir === 'asc' ? 1n : -1n;
+		rows = [...rows].sort((a, b) => {
+			const d = (sortValue(a, sortKey) - sortValue(b, sortKey)) * dir;
+			return d > 0n ? 1 : d < 0n ? -1 : 0;
+		});
+		return rows;
+	});
+
+	function toggleSort(key: SortKey) {
+		if (sortKey === key) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+		else {
+			sortKey = key;
+			sortDir = key === 'date' ? 'desc' : 'desc';
+		}
+	}
+
+	const arrow = (key: SortKey) => (sortKey === key ? (sortDir === 'asc' ? '↑' : '↓') : '');
+
+	async function copy(text: string) {
+		try {
+			await navigator.clipboard.writeText(text);
+			copied = text;
+			setTimeout(() => (copied = copied === text ? '' : copied), 1200);
+		} catch {
+			/* clipboard unavailable */
+		}
+	}
+
+	const directions = [
+		{ id: 'all', label: 'All' },
+		{ id: 'sent', label: 'Sent' },
+		{ id: 'received', label: 'Received' }
+	] as const;
 </script>
 
 <div class="card p-6">
@@ -26,51 +93,200 @@
 		<p class="mt-3 text-sm text-mercury-ink">{form.message}</p>
 	{/if}
 
-	<div class="mt-6 overflow-x-auto">
-		<table class="w-full text-sm">
+	<!-- Controls -->
+	<div class="mt-5 flex flex-wrap items-center gap-3">
+		<input
+			class="input max-w-xs flex-1"
+			placeholder="Search address, name, hash, tag…"
+			bind:value={query}
+		/>
+		<div class="flex overflow-hidden rounded-md border border-ink-200">
+			{#each directions as d (d.id)}
+				<button
+					class="px-3 py-1.5 text-sm font-medium"
+					class:bg-ink-100={direction === d.id}
+					class:text-ink-900={direction === d.id}
+					class:text-ink-400={direction !== d.id}
+					onclick={() => (direction = d.id)}
+				>
+					{d.label}
+				</button>
+			{/each}
+		</div>
+		<span class="text-sm text-ink-400">{visible.length} of {data.rows.length}</span>
+	</div>
+
+	<!-- Table -->
+	<div class="mt-4 overflow-x-auto">
+		<table class="w-full table-fixed text-sm">
+			<colgroup>
+				<col class="w-28" />
+				<col />
+				<col class="w-32" />
+				<col class="w-32" />
+				<col class="w-24" />
+				<col class="w-56" />
+				<col class="w-16" />
+			</colgroup>
 			<thead>
 				<tr class="text-left text-ink-400">
-					<th class="py-2 pr-3 font-medium">#</th>
+					<th
+						class="cursor-pointer py-2 pr-3 font-medium"
+						onclick={() => toggleSort('date')}
+					>
+						Date {arrow('date')}
+					</th>
 					<th class="py-2 pr-3 font-medium">Description</th>
-					<th class="py-2 pr-3 font-medium">Tx Hash</th>
-					<th class="py-2 pr-3 font-medium">Date</th>
-					<th class="py-2 pr-3 text-right font-medium">Sent</th>
-					<th class="py-2 pr-3 text-right font-medium">Received</th>
+					<th
+						class="cursor-pointer py-2 pr-3 text-right font-medium"
+						onclick={() => toggleSort('sent')}>Sent {arrow('sent')}</th
+					>
+					<th
+						class="cursor-pointer py-2 pr-3 text-right font-medium"
+						onclick={() => toggleSort('received')}>Received {arrow('received')}</th
+					>
+					<th
+						class="cursor-pointer py-2 pr-3 text-right font-medium"
+						onclick={() => toggleSort('fee')}>Fee {arrow('fee')}</th
+					>
 					<th class="py-2 pr-3 font-medium">Purpose</th>
-					<th class="py-2 pr-3 text-right font-medium">Fee</th>
+					<th class="py-2 font-medium"></th>
 				</tr>
 			</thead>
 			<tbody>
-				{#each data.rows as row, i (row.id)}
-					<tr class="border-t border-ink-100 hover:bg-ink-100">
-						<td class="py-2.5 pr-3 text-ink-400">{data.rows.length - i}</td>
-						<td class="py-2.5 pr-3 font-medium">{row.counterparty}</td>
-						<td class="mono py-2.5 pr-3 text-ink-600">{row.hashShort}</td>
+				{#each visible as row (row.id)}
+					<tr class="border-t border-ink-100 align-top hover:bg-ink-100">
 						<td class="mono py-2.5 pr-3 text-ink-600">{row.date}</td>
-						<td class="mono py-2.5 pr-3 text-right text-neg">{row.sent}</td>
-						<td class="mono py-2.5 pr-3 text-right text-pos">{row.received}</td>
+						<td class="py-2.5 pr-3">
+							{#if row.counterparties.length === 0}
+								<span class="text-ink-400">—</span>
+							{:else}
+								<span
+									class="block truncate font-medium"
+									title={row.counterparties[0].bech32}
+								>
+									{row.counterparties[0].label}
+								</span>
+								{#if row.counterparties.length > 1}
+									<button
+										class="text-xs text-ink-400 hover:text-ink-900"
+										onclick={() =>
+											(expanded = expanded === row.id ? null : row.id)}
+									>
+										+{row.counterparties.length - 1} more
+									</button>
+								{/if}
+							{/if}
+							{#if row.tags.includes('withdrawal')}
+								<span class="ml-1 text-xs text-mercury-ink">· reward</span>
+							{/if}
+						</td>
+						<td class="mono py-2.5 pr-3 text-right text-neg">
+							{BigInt(row.sent) > 0n ? ada(row.sent) : ''}
+						</td>
+						<td class="mono py-2.5 pr-3 text-right text-pos">
+							{BigInt(row.received) > 0n ? ada(row.received) : ''}
+						</td>
+						<td class="mono py-2.5 pr-3 text-right text-ink-400">{ada(row.fee)}</td>
 						<td class="py-2.5 pr-3">
 							<form method="POST" action="?/categorize" use:enhance>
 								<input type="hidden" name="transactionId" value={row.id} />
 								<select
-									class="select"
+									class="select w-full"
 									name="accountId"
 									value={row.accountId}
 									onchange={(e) => e.currentTarget.form?.requestSubmit()}
 								>
-									{#each options as opt (opt.id)}
-										<option value={opt.id}>{opt.path}</option>
+									{#each data.accountGroups as g (g.label)}
+										<optgroup label={g.label}>
+											{#each g.options as opt (opt.id)}
+												<option value={opt.id} title={opt.path}
+													>{opt.name}</option
+												>
+											{/each}
+										</optgroup>
 									{/each}
 								</select>
 							</form>
 						</td>
-						<td class="mono py-2.5 pr-3 text-right text-ink-400">{row.fee}</td>
+						<td class="py-2.5 text-right">
+							<button
+								class="text-ink-400 hover:text-ink-900"
+								title="Details"
+								aria-label="Toggle details"
+								onclick={() => (expanded = expanded === row.id ? null : row.id)}
+							>
+								{expanded === row.id ? '▾' : '▸'}
+							</button>
+						</td>
 					</tr>
+					{#if expanded === row.id}
+						<tr class="border-t border-ink-100 bg-surface-2">
+							<td colspan="7" class="px-2 py-4">
+								<div class="grid gap-4 sm:grid-cols-2">
+									<div>
+										<p class="eyebrow mb-1">Transaction</p>
+										<div class="flex items-center gap-2">
+											<span class="mono break-all text-xs text-ink-600"
+												>{row.hash}</span
+											>
+											<button
+												class="text-xs text-mercury-ink"
+												onclick={() => copy(row.hash)}
+											>
+												{copied === row.hash ? 'Copied' : 'Copy'}
+											</button>
+											<a
+												class="text-xs text-mercury-ink"
+												href={`${data.explorerBase}${row.hash}`}
+												target="_blank"
+												rel="noreferrer">Explorer ↗</a
+											>
+										</div>
+										<p class="mt-2 text-xs text-ink-400">
+											Net {ada(row.net)} ADA · fee {ada(row.fee)} ADA
+											{#if row.tags.length}· {row.tags.join(', ')}{/if}
+										</p>
+									</div>
+									<div>
+										<p class="eyebrow mb-1">
+											Counterparties ({row.counterparties.length})
+										</p>
+										<ul class="space-y-1">
+											{#each row.counterparties as c (c.bech32)}
+												<li class="flex items-center gap-2">
+													<span
+														class="mono truncate text-xs"
+														title={c.bech32}
+													>
+														{c.named ? c.label : c.bech32}
+													</span>
+													<button
+														class="shrink-0 text-xs text-mercury-ink"
+														onclick={() => copy(c.bech32)}
+													>
+														{copied === c.bech32 ? 'Copied' : 'Copy'}
+													</button>
+												</li>
+											{/each}
+											{#if !row.counterparties.length}
+												<li class="text-xs text-ink-400">
+													No external counterparties (mint/burn).
+												</li>
+											{/if}
+										</ul>
+									</div>
+								</div>
+							</td>
+						</tr>
+					{/if}
 				{/each}
-				{#if !data.rows.length}
+				{#if !visible.length}
 					<tr>
-						<td colspan="8" class="py-10 text-center text-ink-400">
-							No transactions yet. Hit Sync to pull this wallet's history.
+						<td colspan="7" class="py-10 text-center text-ink-400">
+							{data.rows.length
+								? 'No transactions match your filters.'
+								: "No transactions yet. Hit Sync to pull this wallet's history."}
 						</td>
 					</tr>
 				{/if}

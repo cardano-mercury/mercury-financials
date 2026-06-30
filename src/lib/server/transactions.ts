@@ -2,12 +2,18 @@ import { desc } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { transactions } from '$lib/server/db/schema';
 
+export interface Counterparty {
+	label: string;
+	bech32: string;
+	named: boolean;
+}
+
 export interface RegisterRow {
 	id: number;
 	blockTime: number;
 	hash: string;
-	/** Counterparty label: the non-own party's name, or a truncated address. */
-	counterparty: string;
+	/** Every non-own party involved in the transaction. */
+	counterparties: Counterparty[];
 	netLovelace: bigint;
 	sent: bigint;
 	received: bigint;
@@ -37,11 +43,15 @@ export async function loadTransactionRegister(): Promise<RegisterRow[]> {
 	});
 
 	return rows.map((tx) => {
-		const counterparties = new Map<string, string>();
+		const byBech32 = new Map<string, Counterparty>();
 		for (const o of tx.outputs) {
 			for (const addr of [o.fromAddress, o.toAddress]) {
-				if (addr && !addr.isOwn) {
-					counterparties.set(addr.bech32, addr.name ?? truncate(addr.bech32));
+				if (addr && !addr.isOwn && !byBech32.has(addr.bech32)) {
+					byBech32.set(addr.bech32, {
+						bech32: addr.bech32,
+						label: addr.name ?? truncate(addr.bech32),
+						named: !!addr.name
+					});
 				}
 			}
 		}
@@ -50,7 +60,7 @@ export async function loadTransactionRegister(): Promise<RegisterRow[]> {
 			id: tx.id,
 			blockTime: tx.blockTime,
 			hash: tx.hash,
-			counterparty: [...counterparties.values()].join(', '),
+			counterparties: [...byBech32.values()],
 			netLovelace: tx.netLovelace,
 			sent: tx.netLovelace < 0n ? -tx.netLovelace : 0n,
 			received: tx.netLovelace > 0n ? tx.netLovelace : 0n,

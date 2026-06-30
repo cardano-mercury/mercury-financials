@@ -101,7 +101,7 @@ export function transactionRegisterCsv(register: RegisterRow[]): CsvFile {
 		rows.push([
 			new Date(r.blockTime * 1000).toISOString().slice(0, 10),
 			r.hash,
-			r.counterparty,
+			r.counterparties.map((c) => c.label).join('; '),
 			r.sent > 0n ? ada(r.sent) : '',
 			r.received > 0n ? ada(r.received) : '',
 			ada(r.fees),
