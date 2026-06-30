@@ -178,7 +178,14 @@ describe('parseTransaction', () => {
 		const WALLET2 = 'addr1_wallet_change';
 		const utxos: TransactionUtxos = {
 			inputs: [
-				{ address: WALLET, amount: [ada(18_700_000)], tx_hash: 'prev', output_index: 0, collateral: false, reference: false }
+				{
+					address: WALLET,
+					amount: [ada(18_700_000)],
+					tx_hash: 'prev',
+					output_index: 0,
+					collateral: false,
+					reference: false
+				}
 			],
 			outputs: [
 				{ address: BOB, amount: [ada(1_500_000)], output_index: 0, collateral: false },
@@ -198,7 +205,14 @@ describe('parseTransaction', () => {
 
 		expect(tags).toEqual(['spend']);
 		expect(flows).toEqual([
-			{ kind: 'spend', hash: 'tx5', index: 0, unit: 'lovelace', quantity: 1_500_000n, counterparty: BOB }
+			{
+				kind: 'spend',
+				hash: 'tx5',
+				index: 0,
+				unit: 'lovelace',
+				quantity: 1_500_000n,
+				counterparty: BOB
+			}
 		]);
 	});
 });

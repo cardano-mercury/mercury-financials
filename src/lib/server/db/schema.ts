@@ -240,3 +240,6 @@ export type Output = typeof outputs.$inferSelect;
 export type TransactionTag = typeof transactionTags.$inferSelect;
 export type Account = typeof accounts.$inferSelect;
 export type EntitySettings = typeof entitySettings.$inferSelect;
+
+// Better Auth tables (user/session/account/verification/two_factor), shared with mercury-tokenomics.
+export * from './auth.schema';

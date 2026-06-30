@@ -198,7 +198,9 @@ export async function reparseWallet(walletId: number): Promise<number> {
 
 	const isOwn = makeOwnershipTest(wallet.address.bech32, wallet.address.stakeKey);
 	const ownAddresses = new Set(
-		(await db.query.addresses.findMany({ where: eq(addresses.isOwn, true) })).map((a) => a.bech32)
+		(await db.query.addresses.findMany({ where: eq(addresses.isOwn, true) })).map(
+			(a) => a.bech32
+		)
 	);
 
 	const stale = await db.query.transactions.findMany({
