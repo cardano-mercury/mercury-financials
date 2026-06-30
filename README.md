@@ -51,6 +51,8 @@ npm run check     # type check
 npm run lint      # prettier + eslint
 npm run format    # prettier --write
 
+npm run db:start     # start Postgres + Redis (detached)
+npm run db:stop      # stop them
 npm run db:push      # push schema to the db (dev)
 npm run db:generate  # generate a migration
 npm run db:migrate   # run migrations
