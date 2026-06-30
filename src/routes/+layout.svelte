@@ -1,9 +1,44 @@
 <script lang="ts">
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
+	import { page } from '$app/state';
 
-	let { children } = $props();
+	let { children, data } = $props();
+
+	const nav = [
+		{ href: '/transactions', label: 'Transactions' },
+		{ href: '/address-book', label: 'Address book' },
+		{ href: '/reports', label: 'Reports' }
+	];
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
-{@render children()}
+
+<div class="min-h-screen">
+	<header class="border-b border-ink-200 bg-surface">
+		<div class="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
+			<a href="/" class="mono text-lg font-bold text-mercury">Mercury</a>
+
+			{#if data.hasWallets}
+				<nav class="flex items-center gap-1">
+					{#each nav as item (item.href)}
+						<a
+							href={item.href}
+							class="rounded-md px-3 py-1.5 text-sm font-medium"
+							class:text-ink-900={page.url.pathname.startsWith(item.href)}
+							class:text-ink-400={!page.url.pathname.startsWith(item.href)}
+						>
+							{item.label}
+						</a>
+					{/each}
+				</nav>
+			{/if}
+
+			<span class="eyebrow hidden sm:block">{data.entityName}</span>
+		</div>
+	</header>
+
+	<main class="mx-auto max-w-6xl px-4 py-8">
+		{@render children()}
+	</main>
+</div>

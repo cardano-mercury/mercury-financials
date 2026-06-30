@@ -7,29 +7,40 @@ that toward double-entry accounting. It's a Catalyst proof of concept, so it sto
 data and leaves fiat conversion and full multi-address handling out of scope. See `docs/prd.md`
 for the product context.
 
-## Status
-
-This is being rewritten from the original Laravel app to SvelteKit. The old Laravel code lives in
-`archive/` (not tracked) for reference while the rewrite catches up. Don't build on it.
+It was rewritten from an earlier Laravel app to SvelteKit. The old Laravel code lives in
+`archive/` (not tracked) for reference. Don't build on it.
 
 ## Stack
 
 - SvelteKit and TypeScript
 - Postgres with Drizzle ORM
-- Redis with BullMQ for the Blockfrost ingestion jobs
-- Blockfrost for chain data
+- Redis with BullMQ for the Blockfrost ingestion jobs (the worker runs in-process)
+- Blockfrost for chain data, MeshJS for CIP-30 wallet connect
 
 ## Getting started
 
-You'll need Node 22+, Docker (for local Postgres), and a Blockfrost project ID.
+You'll need Node 22+, Docker (for Postgres and Redis), and a Blockfrost project ID.
 
 ```sh
-cp .env.example .env     # then fill in BLOCKFROST_PROJECT_ID
+cp .env.example .env     # then fill in BLOCKFROST_PROJECT_ID (and set BLOCKFROST_NETWORK)
 npm install
-npm run db:start         # local Postgres via compose.yaml
+npm run db:start         # Postgres + Redis via compose.yaml (leave running)
 npm run db:push          # apply the schema
-npm run dev
+npm run dev              # the chart of accounts seeds itself on first boot
 ```
+
+Then open the app:
+
+1. Add a wallet by address, $handle, or a CIP-30 browser wallet.
+2. It syncs the wallet's history from Blockfrost in the background. Hit Sync to pull more.
+3. On the Transactions page, set each row's Purpose (its account). Sensible defaults are applied
+   on ingest, so reports work right away.
+4. Name counterparties in the Address book.
+5. View the Trial Balance, Balance Sheet, and P&L under Reports, and export any of them (plus the
+   transaction register) as CSV.
+
+Reports consolidate across every wallet you add, denominated in ADA. Transfers between your own
+wallets net out.
 
 ## Common commands
 

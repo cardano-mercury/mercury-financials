@@ -11,16 +11,25 @@ export class WalletError extends Error {}
  * withdrawals during parsing), upserts the address as one we own, links the wallet, and queues a
  * first sync.
  */
-export async function createWallet(input: { name: string; bech32: string }) {
+export async function createWallet(input: { name: string; address: string }) {
 	const name = input.name.trim();
-	const bech32 = input.bech32.trim();
+	const entered = input.address.trim();
 	if (!name) throw new WalletError('A wallet name is required.');
-	if (!bech32.startsWith('addr')) throw new WalletError('Enter a valid Cardano address.');
+	if (!entered) throw new WalletError('Enter a wallet address or $handle.');
 
 	const existingName = await db.query.wallets.findFirst({ where: eq(wallets.name, name) });
 	if (existingName) throw new WalletError('A wallet with that name already exists.');
 
 	const bf = new BlockfrostClient();
+
+	// Accept a bech32 address or an ADA Handle ($name).
+	let bech32 = entered;
+	if (entered.startsWith('$')) {
+		bech32 = await bf.resolveHandle(entered);
+	} else if (!entered.startsWith('addr')) {
+		throw new WalletError('Enter a valid Cardano address or $handle.');
+	}
+
 	const info = await bf.getAddress(bech32);
 
 	// The address may already exist (a previously-seen counterparty). Promote it to one we own.

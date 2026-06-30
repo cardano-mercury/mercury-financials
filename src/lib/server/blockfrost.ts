@@ -162,4 +162,20 @@ export class BlockfrostClient {
 	getTransactionUtxos(hash: string): Promise<TransactionUtxos> {
 		return this.get<TransactionUtxos>(`/txs/${hash}/utxos`);
 	}
+
+	getAssetAddresses(asset: string): Promise<{ address: string; quantity: string }[]> {
+		return this.get<{ address: string; quantity: string }[]>(`/assets/${asset}/addresses`);
+	}
+
+	/** Resolve an ADA Handle (with or without the leading $) to the address that currently holds it. */
+	async resolveHandle(handle: string): Promise<string> {
+		const name = handle.replace(/^\$/, '').toLowerCase();
+		const assetName = Buffer.from(name, 'utf8').toString('hex');
+		const holders = await this.getAssetAddresses(`${ADA_HANDLE_POLICY}${assetName}`);
+		if (!holders.length) throw new Error(`No address holds the handle $${name}`);
+		return holders[0].address;
+	}
 }
+
+/** Mainnet ADA Handle policy id. */
+export const ADA_HANDLE_POLICY = 'f0ff48bbb7bbe9d59a40f1ce90e9e9d0ff5002ec48f232b49ca0fb9a';
