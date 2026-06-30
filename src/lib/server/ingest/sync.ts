@@ -1,4 +1,4 @@
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, lt } from 'drizzle-orm';
 import { db } from '$lib/server/db';
 import { addresses, outputs, transactionTags, transactions, wallets } from '$lib/server/db/schema';
 import {
@@ -6,8 +6,9 @@ import {
 	type TransactionWithdrawal,
 	type TransactionUtxos
 } from '$lib/server/blockfrost';
-import { parseTransaction, type Flow } from './parse';
+import { parseTransaction, PARSER_VERSION, type Flow } from './parse';
 import { defaultCategoryPath, getAccountIdByPath } from '$lib/server/accounts';
+import { makeOwnershipTest } from '$lib/server/cardano';
 
 /** A Blockfrost page is 100 rows; a full page means there may be more to fetch. */
 const PAGE_SIZE = 100;
@@ -82,6 +83,7 @@ export async function syncWalletPage(walletId: number): Promise<SyncPageResult> 
 	if (!wallet) throw new Error(`Wallet ${walletId} not found`);
 
 	const bf = new BlockfrostClient();
+	const isOwn = makeOwnershipTest(wallet.address.bech32, wallet.address.stakeKey);
 
 	const ownAddresses = new Set(
 		(await db.query.addresses.findMany({ where: eq(addresses.isOwn, true) })).map(
@@ -115,7 +117,7 @@ export async function syncWalletPage(walletId: number): Promise<SyncPageResult> 
 
 		const parsed = parseTransaction({
 			hash: detail.hash,
-			walletAddress: wallet.address.bech32,
+			isOwnAddress: isOwn,
 			stakeAddress: wallet.address.stakeKey,
 			fees: BigInt(detail.fees),
 			utxos,
@@ -152,6 +154,7 @@ export async function syncWalletPage(walletId: number): Promise<SyncPageResult> 
 				utxoDetail: utxos,
 				netLovelace: parsed.netLovelace,
 				walletIsInput: parsed.walletIsInput,
+				parserVersion: PARSER_VERSION,
 				parsedAt: new Date()
 			})
 			.onConflictDoNothing()
@@ -178,4 +181,71 @@ export async function syncWalletPage(walletId: number): Promise<SyncPageResult> 
 	await db.update(wallets).set({ lastSyncedAt: new Date() }).where(eq(wallets.id, walletId));
 
 	return { fetched: listed.length, created, hasMore: listed.length >= PAGE_SIZE };
+}
+
+/**
+ * Re-derive transactions that were parsed by an older parser version, using the stored Blockfrost
+ * payloads (no API calls). This is how a parsing fix repairs existing data. It recomputes the
+ * flows, tags, cash leg, and the default category, so a transaction's category may move (for
+ * example from income to a spend) when the fix changes what it really was.
+ */
+export async function reparseWallet(walletId: number): Promise<number> {
+	const wallet = await db.query.wallets.findFirst({
+		where: eq(wallets.id, walletId),
+		with: { address: true }
+	});
+	if (!wallet) return 0;
+
+	const isOwn = makeOwnershipTest(wallet.address.bech32, wallet.address.stakeKey);
+	const ownAddresses = new Set(
+		(await db.query.addresses.findMany({ where: eq(addresses.isOwn, true) })).map((a) => a.bech32)
+	);
+
+	const stale = await db.query.transactions.findMany({
+		where: and(
+			eq(transactions.walletId, walletId),
+			lt(transactions.parserVersion, PARSER_VERSION)
+		)
+	});
+
+	let count = 0;
+	for (const tx of stale) {
+		const utxos = tx.utxoDetail as TransactionUtxos | null;
+		if (!utxos) continue;
+		const withdrawals = (tx.withdrawals as TransactionWithdrawal[] | null) ?? [];
+
+		const parsed = parseTransaction({
+			hash: tx.hash,
+			isOwnAddress: isOwn,
+			stakeAddress: wallet.address.stakeKey,
+			fees: tx.fees,
+			utxos,
+			withdrawals
+		});
+
+		await db.delete(outputs).where(eq(outputs.transactionId, tx.id));
+		await db.delete(transactionTags).where(eq(transactionTags.transactionId, tx.id));
+		await persistFlows(tx.id, wallet.addressId, parsed.tags, parsed.flows);
+
+		const path = defaultCategoryPath({
+			netLovelace: parsed.netLovelace,
+			hasWithdrawal: parsed.tags.includes('withdrawal'),
+			counterparties: parsed.flows.map((f) => f.counterparty),
+			ownAddresses
+		});
+
+		await db
+			.update(transactions)
+			.set({
+				netLovelace: parsed.netLovelace,
+				walletIsInput: parsed.walletIsInput,
+				accountId: await getAccountIdByPath(path),
+				parserVersion: PARSER_VERSION,
+				parsedAt: new Date()
+			})
+			.where(eq(transactions.id, tx.id));
+		count++;
+	}
+
+	return count;
 }

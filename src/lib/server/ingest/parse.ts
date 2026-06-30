@@ -15,6 +15,13 @@ import type { TransactionUtxos, TransactionWithdrawal } from '$lib/server/blockf
 export const MINT_INDEX = 9999;
 const LOVELACE = 'lovelace';
 
+/**
+ * Bump when the parsing logic changes so stored transactions can be re-derived. v2 judges wallet
+ * ownership by stake key (not just the one tracked address), so change returning to a different
+ * address of the same wallet is no longer mistaken for income.
+ */
+export const PARSER_VERSION = 2;
+
 export type FlowKind = 'spend' | 'receive';
 
 export interface Flow {
@@ -44,26 +51,27 @@ function sumByUnit(amounts: { unit: string; quantity: string }[], into: Map<stri
 
 export function parseTransaction(params: {
 	hash: string;
-	walletAddress: string;
+	/** True when an address belongs to the wallet, by stake key rather than a single address. */
+	isOwnAddress: (address: string) => boolean;
 	stakeAddress: string | null;
 	fees: bigint;
 	utxos: TransactionUtxos;
 	withdrawals: TransactionWithdrawal[];
 }): ParseResult {
-	const { hash, walletAddress, stakeAddress, fees, utxos, withdrawals } = params;
+	const { hash, isOwnAddress, stakeAddress, fees, utxos, withdrawals } = params;
 
 	const input = new Map<string, bigint>();
 	const output = new Map<string, bigint>();
 
 	let walletIsInput = false;
 	for (const i of utxos.inputs) {
-		if (i.address === walletAddress) {
+		if (isOwnAddress(i.address)) {
 			walletIsInput = true;
 			sumByUnit(i.amount, input);
 		}
 	}
 	for (const o of utxos.outputs) {
-		if (o.address === walletAddress) sumByUnit(o.amount, output);
+		if (isOwnAddress(o.address)) sumByUnit(o.amount, output);
 	}
 
 	const netLovelace = (output.get(LOVELACE) ?? 0n) - (input.get(LOVELACE) ?? 0n);
@@ -91,7 +99,7 @@ export function parseTransaction(params: {
 			if (unit === LOVELACE) remaining -= fees;
 
 			for (const o of utxos.outputs) {
-				if (o.address === walletAddress) continue;
+				if (isOwnAddress(o.address)) continue;
 				if (remaining <= 0n) break;
 				for (const amount of o.amount) {
 					if (amount.unit !== unit) continue;
@@ -116,7 +124,7 @@ export function parseTransaction(params: {
 			let remaining = net;
 			let matched = false;
 			for (const i of utxos.inputs) {
-				if (i.address === walletAddress) continue;
+				if (isOwnAddress(i.address)) continue;
 				if (remaining <= 0n) {
 					matched = true;
 					break;

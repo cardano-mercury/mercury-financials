@@ -75,6 +75,8 @@ export const transactions = pgTable(
 			.notNull()
 			.default(sql`0`),
 		walletIsInput: boolean('wallet_is_input').notNull().default(false),
+		// Bumped when parsing logic changes so stored rows can be re-derived. See PARSER_VERSION.
+		parserVersion: integer('parser_version').notNull().default(0),
 		size: integer('size').notNull().default(0),
 		invalidBefore: text('invalid_before'),
 		invalidHereafter: text('invalid_hereafter'),

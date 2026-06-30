@@ -1,6 +1,6 @@
 import { Worker } from 'bullmq';
 import { getConnection, WALLET_SYNC_QUEUE, type WalletSyncJob } from './queue';
-import { syncWalletPage } from './sync';
+import { syncWalletPage, reparseWallet } from './sync';
 
 const globalForWorker = globalThis as unknown as { __mercuryWorker?: Worker<WalletSyncJob> };
 
@@ -22,6 +22,8 @@ export function startWalletSyncWorker(): Worker<WalletSyncJob> {
 	const worker = new Worker<WalletSyncJob>(
 		WALLET_SYNC_QUEUE,
 		async (job) => {
+			// Repair any rows from an older parser version before pulling new history.
+			const reparsed = await reparseWallet(job.data.walletId);
 			let pages = 0;
 			let created = 0;
 			for (;;) {
@@ -33,7 +35,7 @@ export function startWalletSyncWorker(): Worker<WalletSyncJob> {
 				if (!result.hasMore || result.created === 0) break;
 				await sleep(250);
 			}
-			return { pages, created };
+			return { reparsed, pages, created };
 		},
 		{ connection: getConnection(), concurrency: 2 }
 	);

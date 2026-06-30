@@ -49,6 +49,7 @@
 	"dependencies": {
 		"@lucide/svelte": "^1.22.0",
 		"@meshsdk/core": "^1.9.1",
+		"better-auth": "^1.6.23",
 		"bullmq": "^5.79.2",
 		"ioredis": "^5.11.1"
 	}

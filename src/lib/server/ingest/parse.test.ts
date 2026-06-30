@@ -32,7 +32,7 @@ describe('parseTransaction', () => {
 
 		const { tags, flows } = parseTransaction({
 			hash: 'tx1',
-			walletAddress: WALLET,
+			isOwnAddress: (a) => a === WALLET,
 			stakeAddress: STAKE,
 			fees: 1_000_000n,
 			utxos,
@@ -74,7 +74,7 @@ describe('parseTransaction', () => {
 
 		const { tags, flows } = parseTransaction({
 			hash: 'tx2',
-			walletAddress: WALLET,
+			isOwnAddress: (a) => a === WALLET,
 			stakeAddress: STAKE,
 			fees: 200_000n,
 			utxos,
@@ -120,7 +120,7 @@ describe('parseTransaction', () => {
 
 		const { tags, flows } = parseTransaction({
 			hash: 'tx3',
-			walletAddress: WALLET,
+			isOwnAddress: (a) => a === WALLET,
 			stakeAddress: STAKE,
 			fees: 2_000_000n,
 			utxos,
@@ -161,7 +161,7 @@ describe('parseTransaction', () => {
 
 		const { tags } = parseTransaction({
 			hash: 'tx4',
-			walletAddress: WALLET,
+			isOwnAddress: (a) => a === WALLET,
 			stakeAddress: STAKE,
 			fees: 200_000n,
 			utxos,
@@ -170,5 +170,35 @@ describe('parseTransaction', () => {
 
 		expect(tags).toContain('withdrawal');
 		expect(tags).toContain('receive');
+	});
+
+	it('treats change returning to another own address as a spend, not income', () => {
+		// Spends from WALLET; change of 17 ADA returns to WALLET2 (same wallet, different address).
+		// Net out is the 1.5 ADA paid plus the 0.2 fee, not +17 ADA income.
+		const WALLET2 = 'addr1_wallet_change';
+		const utxos: TransactionUtxos = {
+			inputs: [
+				{ address: WALLET, amount: [ada(18_700_000)], tx_hash: 'prev', output_index: 0, collateral: false, reference: false }
+			],
+			outputs: [
+				{ address: BOB, amount: [ada(1_500_000)], output_index: 0, collateral: false },
+				{ address: WALLET2, amount: [ada(17_000_000)], output_index: 1, collateral: false }
+			],
+			hash: 'tx5'
+		};
+
+		const { tags, flows } = parseTransaction({
+			hash: 'tx5',
+			isOwnAddress: (a) => a === WALLET || a === WALLET2,
+			stakeAddress: STAKE,
+			fees: 200_000n,
+			utxos,
+			withdrawals: []
+		});
+
+		expect(tags).toEqual(['spend']);
+		expect(flows).toEqual([
+			{ kind: 'spend', hash: 'tx5', index: 0, unit: 'lovelace', quantity: 1_500_000n, counterparty: BOB }
+		]);
 	});
 });
