@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { resolve } from '$app/paths';
 
 	let { form, data } = $props();
 </script>
@@ -37,7 +38,7 @@
 
 		{#if data.signupsOpen}
 			<p class="mt-4 text-center text-sm text-ink-400">
-				No account? <a href="/signup" class="text-mercury-ink">Create one</a>
+				No account? <a href={resolve('/signup')} class="text-mercury-ink">Create one</a>
 			</p>
 		{/if}
 	</div>

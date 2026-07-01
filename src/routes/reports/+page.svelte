@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { resolve } from '$app/paths';
+
 	let { data } = $props();
 
 	let tab = $state<'tb' | 'bs' | 'pl'>('bs');
@@ -25,13 +27,15 @@
 		{/each}
 	</div>
 	<div class="flex gap-2">
-		<a href="/export/trial-balance" data-sveltekit-reload class="btn btn-ghost"
+		<a href={resolve('/export/trial-balance')} data-sveltekit-reload class="btn btn-ghost"
 			>Trial Balance CSV</a
 		>
-		<a href="/export/balance-sheet" data-sveltekit-reload class="btn btn-ghost"
+		<a href={resolve('/export/balance-sheet')} data-sveltekit-reload class="btn btn-ghost"
 			>Balance Sheet CSV</a
 		>
-		<a href="/export/profit-loss" data-sveltekit-reload class="btn btn-ghost">P&amp;L CSV</a>
+		<a href={resolve('/export/profit-loss')} data-sveltekit-reload class="btn btn-ghost"
+			>P&amp;L CSV</a
+		>
 	</div>
 </div>
 

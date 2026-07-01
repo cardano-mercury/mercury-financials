@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { resolve } from '$app/paths';
 	import { formatAda } from '$lib/money';
 	import {
 		ChevronRight,
@@ -101,13 +102,15 @@
 			{#each data.wallets as w (w.id)}
 				<span class="chip" title={w.bech32}>{w.name}</span>
 			{/each}
-			<a href="/" class="text-sm font-medium text-ink-400 hover:text-ink-900">+ Add wallet</a>
+			<a href={resolve('/')} class="text-sm font-medium text-ink-400 hover:text-ink-900"
+				>+ Add wallet</a
+			>
 		</div>
 		<div class="flex items-center gap-2">
 			<form method="POST" action="?/sync" use:enhance>
 				<button type="submit" class="btn btn-ghost">Sync</button>
 			</form>
-			<a href="/address-book" class="btn btn-affirmative">Edit address book</a>
+			<a href={resolve('/address-book')} class="btn btn-affirmative">Edit address book</a>
 		</div>
 	</div>
 
@@ -256,7 +259,7 @@
 												class="inline-flex items-center gap-1 whitespace-nowrap text-mercury-ink"
 												href={`${data.explorerBase}${row.hash}`}
 												target="_blank"
-												rel="noreferrer"
+												rel="external noreferrer"
 											>
 												<ExternalLink size={14} /> Explorer
 											</a>
@@ -318,10 +321,12 @@
 	</div>
 
 	<div class="mt-6 flex flex-wrap justify-end gap-3">
-		<a href="/export/register" data-sveltekit-reload class="btn btn-ghost">Export register</a>
-		<a href="/export/trial-balance" data-sveltekit-reload class="btn btn-primary">
+		<a href={resolve('/export/register')} data-sveltekit-reload class="btn btn-ghost"
+			>Export register</a
+		>
+		<a href={resolve('/export/trial-balance')} data-sveltekit-reload class="btn btn-primary">
 			Export Full Trial Balance
 		</a>
-		<a href="/reports" class="btn btn-primary">Balance Sheet / P&amp;L</a>
+		<a href={resolve('/reports')} class="btn btn-primary">Balance Sheet / P&amp;L</a>
 	</div>
 </div>

@@ -2,6 +2,7 @@
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import { page } from '$app/state';
+	import { resolve } from '$app/paths';
 
 	let { children, data } = $props();
 
@@ -9,7 +10,7 @@
 		{ href: '/transactions', label: 'Transactions' },
 		{ href: '/address-book', label: 'Address book' },
 		{ href: '/reports', label: 'Reports' }
-	];
+	] as const;
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
@@ -17,13 +18,13 @@
 <div class="min-h-screen">
 	<header class="border-b border-ink-200 bg-surface">
 		<div class="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
-			<a href="/" class="mono text-lg font-bold text-mercury">Mercury</a>
+			<a href={resolve('/')} class="mono text-lg font-bold text-mercury">Mercury</a>
 
 			{#if data.user && data.hasWallets}
 				<nav class="flex items-center gap-1">
 					{#each nav as item (item.href)}
 						<a
-							href={item.href}
+							href={resolve(item.href)}
 							class="rounded-md px-3 py-1.5 text-sm font-medium"
 							class:text-ink-900={page.url.pathname.startsWith(item.href)}
 							class:text-ink-400={!page.url.pathname.startsWith(item.href)}

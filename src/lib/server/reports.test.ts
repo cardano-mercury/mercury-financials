@@ -8,7 +8,7 @@ import {
 	type LedgerContext,
 	type LedgerTx
 } from './reports';
-import type { Account, NormalBalance, Statement } from '$lib/server/db/schema';
+import type { Account, NormalBalance } from '$lib/server/db/schema';
 
 function makeAccount(p: Partial<Account> & { id: number; normalBalance: NormalBalance }): Account {
 	return {
