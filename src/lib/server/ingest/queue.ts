@@ -42,13 +42,31 @@ export function getWalletSyncQueue(): Queue<WalletSyncJob> {
 	return queue;
 }
 
-/** Schedule a wallet to be synced. Deduplicated per wallet via a stable job id. */
+/**
+ * Schedule a wallet to be synced. The stable job id deduplicates a sync that is already queued or
+ * running, which is what we want: hammering Sync should not stack up jobs.
+ *
+ * The catch is that BullMQ treats `add()` with an existing job id as a silent no-op even when that
+ * job has already *finished*, and `removeOnFail` keeps failed jobs around. So one failed sync (an
+ * expired Blockfrost key, a rate limit, a network blip) would wedge the wallet permanently: every
+ * later Sync would return happily and do nothing, with no error anywhere. Clear a finished job
+ * before re-adding, and leave queued or running ones alone so the dedupe still holds.
+ */
 export async function enqueueWalletSync(walletId: number, delayMs = 0) {
-	await getWalletSyncQueue().add(
+	const queue = getWalletSyncQueue();
+	const jobId = `wallet-${walletId}`;
+
+	const existing = await queue.getJob(jobId);
+	if (existing) {
+		const state = await existing.getState();
+		if (state === 'completed' || state === 'failed') await existing.remove();
+	}
+
+	await queue.add(
 		'sync',
 		{ walletId },
 		{
-			jobId: `wallet-${walletId}`,
+			jobId,
 			delay: delayMs,
 			removeOnComplete: true,
 			removeOnFail: 100

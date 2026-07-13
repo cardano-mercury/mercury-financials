@@ -24,5 +24,12 @@ export const handle: Handle = async ({ event, resolve }) => {
 		event.locals.session = session.session;
 		event.locals.user = session.user;
 	}
-	return svelteKitHandler({ event, resolve, auth, building });
+	// The cast is load-bearing but harmless. mercury-core is a `file:` link, so it resolves
+	// better-auth from its own node_modules rather than ours. Two physical copies of the same
+	// version are still two distinct type identities, so the plugin tuple on core's `auth` is not
+	// structurally assignable to the `BetterAuthOptions` this handler wants, even though it is the
+	// same shape at runtime (Vite bundles a single instance, and auth works end to end). Tokenomics
+	// carries the identical cast. Core owns the real fix; see its TRD
+	// 2026-07-13-svelte-kit-handler-auth-type-mismatch.md.
+	return svelteKitHandler({ event, resolve, auth: auth as never, building });
 };
