@@ -25,18 +25,29 @@ You'll need Node 22+, Docker (for Postgres and Redis), and a Blockfrost project 
 cp .env.example .env     # then fill in BLOCKFROST_PROJECT_ID (and set BLOCKFROST_NETWORK)
 npm install
 npm run db:start         # Postgres + Redis via compose.yaml (leave running)
-npm run db:push          # apply the schema
+npm run db:auth          # shared auth tables (see below)
+npm run db:migrate       # apply the schema
 npm run dev              # the chart of accounts seeds itself on first boot
 ```
 
+A note on the database: the Mercury apps share one Postgres. Everything this app owns is prefixed
+`financials_`; the unprefixed `user`/`session`/`account`/`verification`/`two_factor` tables belong
+to mercury-core, and tokenomics owns `tokenomics_*`. `db:auth` creates the shared auth tables as a
+stopgap until core ships its own migration runner.
+
+There is deliberately no `db:push`. `tablesFilter` does not cover sequences, so `drizzle-kit push`
+proposes dropping tokenomics' migration journal and would destroy its history. Use `db:generate`
+and `db:migrate`.
+
 Then open the app:
 
-1. Add a wallet by address, $handle, or a CIP-30 browser wallet.
-2. It syncs the wallet's history from Blockfrost in the background. Hit Sync to pull more.
-3. On the Transactions page, set each row's Purpose (its account). Sensible defaults are applied
+1. Name your entity under Settings. It heads every statement and CSV.
+2. Add a wallet by address, $handle, or a CIP-30 browser wallet.
+3. It syncs the wallet's history from Blockfrost in the background. Hit Sync to pull more.
+4. On the Transactions page, set each row's Purpose (its account). Sensible defaults are applied
    on ingest, so reports work right away.
-4. Name counterparties in the Address book.
-5. View the Trial Balance, Balance Sheet, and P&L under Reports, and export any of them (plus the
+5. Name counterparties in the Address book.
+6. View the Trial Balance, Balance Sheet, and P&L under Reports, and export any of them (plus the
    transaction register) as CSV.
 
 Reports consolidate across every wallet you add, denominated in ADA. Transfers between your own
@@ -53,8 +64,15 @@ npm run format    # prettier --write
 
 npm run db:start     # start Postgres + Redis (detached)
 npm run db:stop      # stop them
-npm run db:push      # push schema to the db (dev)
+npm run db:auth      # shared auth tables (stopgap until core owns them)
 npm run db:generate  # generate a migration
 npm run db:migrate   # run migrations
 npm run db:studio    # Drizzle Studio
 ```
+
+## Deploying
+
+See `docs/deployment.md`: the shared-database rules and migration order, the environment matrix,
+the `DEMO_MODE` public read-only demo, and how to build the image. The stack that runs financials
+and tokenomics together on one machine (Caddy, Postgres, Redis, both apps) lives in mercury-core
+under `deploy/`.
