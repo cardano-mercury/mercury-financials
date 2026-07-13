@@ -33,17 +33,21 @@ script. `tablesFilter` does not cover sequences, so push from financials propose
 `DROP SEQUENCE __drizzle_migrations_tokenomics_id_seq` and would destroy tokenomics' migration
 history. Use `db:generate` and `db:migrate`, which only apply committed SQL.
 
-### Known gap: core does not yet ship its auth migrations
+### Applying the shared auth tables
 
-Core owns the shared auth tables but has no migration runner yet (tracked in core's TRD
-`CORE_OWNS_AUTH_MIGRATIONS.md`). Until it lands, apply them with the stopgap script, which is
-idempotent:
+Core ships them and owns their migrations:
 
 ```sh
-psql "$DATABASE_URL" -f drizzle/manual/shared-auth-tables.sql   # or: npm run db:auth
+npx mercury-core migrate      # or: npm run db:auth
 ```
 
-Delete `drizzle/manual/shared-auth-tables.sql` once core takes this over.
+It takes a Postgres advisory lock, so two app containers racing each other at boot is safe, and it
+is idempotent. If the database already has `user`/`session`/`account`/`verification`/`two_factor`
+from before core owned them, it refuses to guess and tells you to run:
+
+```sh
+npx mercury-core migrate --baseline   # adopt the existing tables without altering them
+```
 
 ### Moving an older database across
 
@@ -92,16 +96,11 @@ do.
 
 ## Building the image
 
-The build context is the **parent directory holding both repos**, not this one:
+An ordinary single-context build, since `@cardano-mercury/core` installs from npm:
 
 ```sh
-docker build -f mercury-financials/Dockerfile -t mercury-financials ~/cardano-mercury
+docker build -t mercury-financials .
 ```
-
-This is forced, not stylistic: `package.json` depends on core as `file:../mercury-core`, and npm
-cannot resolve a path outside the build context, so building with this repo alone as the context
-fails at `npm ci`. Once core is published to a registry (core's TRD
-`CORE_PUBLISHABLE_FOR_DOCKER_BUILDS.md`) this becomes an ordinary single-context build.
 
 The Dockerfile has two useful targets:
 
@@ -111,7 +110,7 @@ The Dockerfile has two useful targets:
   starting the app.
 
 ```sh
-docker build -f mercury-financials/Dockerfile --target migrate -t mercury-financials-migrate ~/cardano-mercury
+docker build --target migrate -t mercury-financials-migrate .
 docker run --rm -e DATABASE_URL=... mercury-financials-migrate
 ```
 
@@ -120,8 +119,8 @@ docker run --rm -e DATABASE_URL=... mercury-financials-migrate
 The sequence a fresh production database needs:
 
 ```sh
-# 1. shared auth tables (core's, until core ships its runner)
-psql "$DATABASE_URL" -f drizzle/manual/shared-auth-tables.sql
+# 1. shared auth tables (core owns these)
+npx mercury-core migrate
 
 # 2. financials' own tables
 docker run --rm -e DATABASE_URL="$DATABASE_URL" mercury-financials-migrate

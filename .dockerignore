@@ -1,33 +1,20 @@
-# The build context is the parent directory holding every Mercury repo, so this file has to exclude
-# the heavy and secret parts of all of them, not just this one.
-
-**/node_modules
-**/.git
-**/.svelte-kit
-**/build
-**/dist
-**/.vercel
-**/.netlify
-**/.wrangler
-**/.output
+node_modules
+.git
+.svelte-kit
+build
 
 # Secrets. Never bake an env file into an image.
-**/.env
-**/.env.*
-!**/.env.example
+.env
+.env.*
+!.env.example
 
 # The old Laravel app, kept locally for reference. Enormous and irrelevant to the image.
-mercury-financials/archive
+archive
 
-# Internal working documents (design docs, TRDs, finance docs).
-**/.claude
+# Internal working documents (design docs, finance docs).
+.claude
 
-# Editors and OS noise
-**/.idea
-**/.vscode
-**/.DS_Store
-**/Thumbs.db
-
-# Other Mercury apps: financials' image needs core, and nothing else.
-mercury-invoice
-mercury-tokenomics
+.idea
+.vscode
+.DS_Store
+Thumbs.db

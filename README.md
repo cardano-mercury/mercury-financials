@@ -25,7 +25,7 @@ You'll need Node 22+, Docker (for Postgres and Redis), and a Blockfrost project 
 cp .env.example .env     # then fill in BLOCKFROST_PROJECT_ID (and set BLOCKFROST_NETWORK)
 npm install
 npm run db:start         # Postgres + Redis via compose.yaml (leave running)
-npm run db:auth          # shared auth tables (see below)
+npm run db:auth          # shared auth tables (core owns these)
 npm run db:migrate       # apply the schema
 npm run dev              # the chart of accounts seeds itself on first boot
 ```
@@ -64,7 +64,7 @@ npm run format    # prettier --write
 
 npm run db:start     # start Postgres + Redis (detached)
 npm run db:stop      # stop them
-npm run db:auth      # shared auth tables (stopgap until core owns them)
+npm run db:auth      # shared auth tables (runs mercury-core migrate)
 npm run db:generate  # generate a migration
 npm run db:migrate   # run migrations
 npm run db:studio    # Drizzle Studio

@@ -16,7 +16,7 @@
 		"test:watch": "vitest",
 		"db:start": "docker compose up -d",
 		"db:stop": "docker compose down",
-		"db:auth": "psql \"$DATABASE_URL\" -f drizzle/manual/shared-auth-tables.sql",
+		"db:auth": "mercury-core migrate",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
 		"db:studio": "drizzle-kit studio"
@@ -47,7 +47,7 @@
 		"vitest": "^4.1.9"
 	},
 	"dependencies": {
-		"@cardano-mercury/core": "file:../mercury-core",
+		"@cardano-mercury/core": "^0.2.1",
 		"@lucide/svelte": "^1.22.0",
 		"@meshsdk/core": "^1.9.1",
 		"better-auth": "~1.6.23",

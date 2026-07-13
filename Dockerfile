@@ -1,64 +1,43 @@
 # Mercury: Financials production image.
 #
-# IMPORTANT: the build context is the PARENT directory that holds both repos, not this one:
+#   docker build -t mercury-financials .
 #
-#   docker build -f mercury-financials/Dockerfile -t mercury-financials ~/cardano-mercury
-#
-# That is not a preference, it is forced: package.json depends on core as
-# "@cardano-mercury/core": "file:../mercury-core", and a path outside the build context cannot be
-# resolved, so `npm ci` fails outright with this repo alone as the context. Once core is published
-# to a registry (TRD: mercury-core/.claude/trds/CORE_PUBLISHABLE_FOR_DOCKER_BUILDS.md) this whole
-# file collapses to an ordinary single-context build and the core stages below disappear.
+# An ordinary single-context build: @cardano-mercury/core comes from npm, so nothing outside this
+# repo is needed. (It used to require the parent directory as context, because core was a
+# `file:../mercury-core` link that npm could not resolve from within a build context.)
 
 FROM node:22-alpine AS base
 WORKDIR /app
 
 
-# Build stage: core first (financials links to its dist/), then the app.
 FROM base AS builder
 
-COPY mercury-core/package.json mercury-core/package-lock.json* ./mercury-core/
-RUN cd mercury-core && npm ci
+COPY package.json package-lock.json ./
+RUN npm ci
 
-COPY mercury-core/ ./mercury-core/
-RUN cd mercury-core && npm run build
-
-COPY mercury-financials/package.json mercury-financials/package-lock.json ./mercury-financials/
-RUN cd mercury-financials && npm ci
-
-COPY mercury-financials/ ./mercury-financials/
-RUN cd mercury-financials && npm run build
+COPY . .
+RUN npm run build
 
 
-# Migration stage: keeps the dev dependencies, because drizzle-kit is one of them. Run this as a
-# one-shot before starting the app; it is not the image that serves traffic.
-#
-#   docker run --rm -e DATABASE_URL=... mercury-financials-migrate
-#
-# Note this applies ONLY financials' own financials_* tables. The shared auth tables belong to core
-# and must already exist (TRD: CORE_OWNS_AUTH_MIGRATIONS.md), otherwise tokenomics' foreign keys to
-# "user" have nothing to point at.
+# Migration stage: keeps the dev dependencies, because drizzle-kit is one of them. Run as a one-shot
+# before the app starts. This applies ONLY financials' own financials_* tables; the shared auth
+# tables belong to core and are applied by `npx mercury-core migrate`, which must run first (see
+# docs/deployment.md, and note tokenomics foreign-keys to "user").
 FROM builder AS migrate
-WORKDIR /app/mercury-financials
 CMD ["npx", "drizzle-kit", "migrate"]
 
 
-# Runtime: production dependencies only, plus the built server.
+# Runtime: production dependencies plus the built server.
 FROM base AS runner
 
 ENV NODE_ENV=production
 
-# adapter-node externalises anything listed in `dependencies`, so those must be present at runtime;
-# `devDependencies` (drizzle-orm, postgres, svelte) are bundled into build/ and are not needed here.
-COPY mercury-core/package.json ./mercury-core/package.json
-COPY --from=builder /app/mercury-core/dist ./mercury-core/dist
+# adapter-node externalises anything in `dependencies`, so those must be present at runtime;
+# `devDependencies` (drizzle-orm, postgres, svelte) are bundled into build/ and are not needed.
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev && npm cache clean --force
 
-COPY mercury-financials/package.json mercury-financials/package-lock.json ./mercury-financials/
-RUN cd mercury-financials && npm ci --omit=dev && npm cache clean --force
-
-COPY --from=builder /app/mercury-financials/build ./mercury-financials/build
-
-WORKDIR /app/mercury-financials
+COPY --from=builder /app/build ./build
 
 # The Node server binds this; Caddy reaches it on the internal network, so it is never published.
 ENV HOST=0.0.0.0
