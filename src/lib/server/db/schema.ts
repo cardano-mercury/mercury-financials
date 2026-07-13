@@ -8,19 +8,25 @@ import {
 	jsonb,
 	timestamp,
 	uniqueIndex,
-	index
+	index,
+	foreignKey
 } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 
 /**
- * Single-user "CFO Tool": there is no users table by design.
+ * Every table here is prefixed `financials_` because the Mercury apps share one Postgres database.
+ * The unprefixed `user`/`session`/`account`/`verification`/`two_factor` tables belong to
+ * mercury-core, and tokenomics owns `tokenomics_*`. Nothing in this file may create or drop a table
+ * outside its own prefix; `drizzle.config.ts` enforces that with `tablesFilter`.
+ *
+ * Single-user "CFO Tool": there is no users table of our own by design.
  *
  * `addresses` is the address book and the home for every bech32 we know about: the wallets we
  * track (is_own), the named counterparties from the address book (name + description), and the
  * bare counterparty addresses discovered while parsing transactions (name/description null until
  * the user labels them).
  */
-export const addresses = pgTable('addresses', {
+export const addresses = pgTable('financials_address', {
 	id: serial('id').primaryKey(),
 	bech32: text('bech32').notNull().unique(),
 	stakeKey: text('stake_key'),
@@ -31,7 +37,7 @@ export const addresses = pgTable('addresses', {
 	updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 });
 
-export const wallets = pgTable('wallets', {
+export const wallets = pgTable('financials_wallet', {
 	id: serial('id').primaryKey(),
 	name: text('name').notNull().unique(),
 	addressId: integer('address_id')
@@ -49,7 +55,7 @@ export const wallets = pgTable('wallets', {
  * strings Blockfrost returns and are parsed to BigInt at use.
  */
 export const transactions = pgTable(
-	'transactions',
+	'financials_transaction',
 	{
 		id: serial('id').primaryKey(),
 		walletId: integer('wallet_id')
@@ -98,8 +104,8 @@ export const transactions = pgTable(
 		updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 	},
 	(t) => [
-		uniqueIndex('transactions_wallet_hash_idx').on(t.walletId, t.hash),
-		index('transactions_wallet_block_height_idx').on(t.walletId, t.blockHeight)
+		uniqueIndex('financials_transaction_wallet_hash_idx').on(t.walletId, t.hash),
+		index('financials_transaction_wallet_block_height_idx').on(t.walletId, t.blockHeight)
 	]
 );
 
@@ -109,7 +115,7 @@ export const transactions = pgTable(
  * reports build on.
  */
 export const outputs = pgTable(
-	'outputs',
+	'financials_output',
 	{
 		id: serial('id').primaryKey(),
 		transactionId: integer('transaction_id')
@@ -124,7 +130,7 @@ export const outputs = pgTable(
 		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
 	},
 	(t) => [
-		uniqueIndex('outputs_dedupe_idx').on(
+		uniqueIndex('financials_output_dedupe_idx').on(
 			t.transactionId,
 			t.hash,
 			t.index,
@@ -136,22 +142,30 @@ export const outputs = pgTable(
 );
 
 export const transactionTags = pgTable(
-	'transaction_tags',
+	'financials_transaction_tag',
 	{
 		id: serial('id').primaryKey(),
-		transactionId: integer('transaction_id')
-			.notNull()
-			.references(() => transactions.id, { onDelete: 'cascade' }),
+		transactionId: integer('transaction_id').notNull(),
 		name: text('name').notNull()
 	},
-	(t) => [uniqueIndex('transaction_tags_tx_name_idx').on(t.transactionId, t.name)]
+	(t) => [
+		uniqueIndex('financials_transaction_tag_tx_name_idx').on(t.transactionId, t.name),
+		// Named explicitly: drizzle's derived name for this one would be 70 characters, and Postgres
+		// silently truncates identifiers at 63. The truncated name in the database would then never
+		// match the name drizzle expects, so every `generate`/`push` would see permanent drift.
+		foreignKey({
+			columns: [t.transactionId],
+			foreignColumns: [transactions.id],
+			name: 'financials_transaction_tag_transaction_id_fk'
+		}).onDelete('cascade')
+	]
 );
 
 /**
  * Single instance-wide entity. The local instance is one organisation; this row carries the name
  * that prints on the report headers ("Name of Entity" in the sample statements).
  */
-export const entitySettings = pgTable('entity_settings', {
+export const entitySettings = pgTable('financials_entity_settings', {
 	id: serial('id').primaryKey(),
 	name: text('name').notNull().default('Your Entity'),
 	createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -171,7 +185,7 @@ export type NormalBalance = 'debit' | 'credit';
  * wallets; it has no statement and is excluded from the reports.
  */
 export const accounts = pgTable(
-	'accounts',
+	'financials_account',
 	{
 		id: serial('id').primaryKey(),
 		statement: text('statement').$type<Statement | null>(),
@@ -184,7 +198,7 @@ export const accounts = pgTable(
 		isInternalTransfer: boolean('is_internal_transfer').notNull().default(false),
 		sortOrder: integer('sort_order').notNull().default(0)
 	},
-	(t) => [uniqueIndex('accounts_path_idx').on(t.path)]
+	(t) => [uniqueIndex('financials_account_path_idx').on(t.path)]
 );
 
 export const addressesRelations = relations(addresses, ({ many, one }) => ({

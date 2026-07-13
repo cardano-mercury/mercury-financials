@@ -5,43 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1782770254213,
-      "tag": "0000_parallel_mister_sinister",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1782771759678,
-      "tag": "0001_careless_chameleon",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1782771992555,
-      "tag": "0002_brave_leech",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1782772329979,
-      "tag": "0003_steady_black_crow",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1782794756901,
-      "tag": "0004_cold_leader",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1782823915341,
-      "tag": "0005_productive_sandman",
+      "when": 1783954863183,
+      "tag": "0000_financials_baseline",
       "breakpoints": true
     }
   ]

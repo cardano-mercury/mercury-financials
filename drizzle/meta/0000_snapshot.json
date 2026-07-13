@@ -1,11 +1,104 @@
 {
-  "id": "cd57fccf-3275-40fd-9c53-ab8ec83edc2d",
+  "id": "74251ee6-8483-4a88-b257-fdbc8a506c13",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
-    "public.addresses": {
-      "name": "addresses",
+    "public.financials_account": {
+      "name": "financials_account",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "statement": {
+          "name": "statement",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "section": {
+          "name": "section",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subgroups": {
+          "name": "subgroups",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "path": {
+          "name": "path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "normal_balance": {
+          "name": "normal_balance",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_cash": {
+          "name": "is_cash",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "is_internal_transfer": {
+          "name": "is_internal_transfer",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {
+        "financials_account_path_idx": {
+          "name": "financials_account_path_idx",
+          "columns": [
+            {
+              "expression": "path",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.financials_address": {
+      "name": "financials_address",
       "schema": "",
       "columns": {
         "id": {
@@ -64,8 +157,8 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "addresses_bech32_unique": {
-          "name": "addresses_bech32_unique",
+        "financials_address_bech32_unique": {
+          "name": "financials_address_bech32_unique",
           "nullsNotDistinct": false,
           "columns": [
             "bech32"
@@ -76,8 +169,48 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.outputs": {
-      "name": "outputs",
+    "public.financials_entity_settings": {
+      "name": "financials_entity_settings",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Your Entity'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.financials_output": {
+      "name": "financials_output",
       "schema": "",
       "columns": {
         "id": {
@@ -137,8 +270,8 @@
         }
       },
       "indexes": {
-        "outputs_dedupe_idx": {
-          "name": "outputs_dedupe_idx",
+        "financials_output_dedupe_idx": {
+          "name": "financials_output_dedupe_idx",
           "columns": [
             {
               "expression": "transaction_id",
@@ -184,10 +317,10 @@
         }
       },
       "foreignKeys": {
-        "outputs_transaction_id_transactions_id_fk": {
-          "name": "outputs_transaction_id_transactions_id_fk",
-          "tableFrom": "outputs",
-          "tableTo": "transactions",
+        "financials_output_transaction_id_financials_transaction_id_fk": {
+          "name": "financials_output_transaction_id_financials_transaction_id_fk",
+          "tableFrom": "financials_output",
+          "tableTo": "financials_transaction",
           "columnsFrom": [
             "transaction_id"
           ],
@@ -197,10 +330,10 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "outputs_from_address_id_addresses_id_fk": {
-          "name": "outputs_from_address_id_addresses_id_fk",
-          "tableFrom": "outputs",
-          "tableTo": "addresses",
+        "financials_output_from_address_id_financials_address_id_fk": {
+          "name": "financials_output_from_address_id_financials_address_id_fk",
+          "tableFrom": "financials_output",
+          "tableTo": "financials_address",
           "columnsFrom": [
             "from_address_id"
           ],
@@ -210,10 +343,10 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "outputs_to_address_id_addresses_id_fk": {
-          "name": "outputs_to_address_id_addresses_id_fk",
-          "tableFrom": "outputs",
-          "tableTo": "addresses",
+        "financials_output_to_address_id_financials_address_id_fk": {
+          "name": "financials_output_to_address_id_financials_address_id_fk",
+          "tableFrom": "financials_output",
+          "tableTo": "financials_address",
           "columnsFrom": [
             "to_address_id"
           ],
@@ -230,8 +363,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.transaction_tags": {
-      "name": "transaction_tags",
+    "public.financials_transaction_tag": {
+      "name": "financials_transaction_tag",
       "schema": "",
       "columns": {
         "id": {
@@ -254,8 +387,8 @@
         }
       },
       "indexes": {
-        "transaction_tags_tx_name_idx": {
-          "name": "transaction_tags_tx_name_idx",
+        "financials_transaction_tag_tx_name_idx": {
+          "name": "financials_transaction_tag_tx_name_idx",
           "columns": [
             {
               "expression": "transaction_id",
@@ -277,10 +410,10 @@
         }
       },
       "foreignKeys": {
-        "transaction_tags_transaction_id_transactions_id_fk": {
-          "name": "transaction_tags_transaction_id_transactions_id_fk",
-          "tableFrom": "transaction_tags",
-          "tableTo": "transactions",
+        "financials_transaction_tag_transaction_id_fk": {
+          "name": "financials_transaction_tag_transaction_id_fk",
+          "tableFrom": "financials_transaction_tag",
+          "tableTo": "financials_transaction",
           "columnsFrom": [
             "transaction_id"
           ],
@@ -297,8 +430,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.transactions": {
-      "name": "transactions",
+    "public.financials_transaction": {
+      "name": "financials_transaction",
       "schema": "",
       "columns": {
         "id": {
@@ -312,6 +445,12 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
         },
         "hash": {
           "name": "hash",
@@ -362,6 +501,27 @@
           "primaryKey": false,
           "notNull": true,
           "default": "0"
+        },
+        "net_lovelace": {
+          "name": "net_lovelace",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "wallet_is_input": {
+          "name": "wallet_is_input",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "parser_version": {
+          "name": "parser_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
         },
         "size": {
           "name": "size",
@@ -492,8 +652,8 @@
         }
       },
       "indexes": {
-        "transactions_wallet_hash_idx": {
-          "name": "transactions_wallet_hash_idx",
+        "financials_transaction_wallet_hash_idx": {
+          "name": "financials_transaction_wallet_hash_idx",
           "columns": [
             {
               "expression": "wallet_id",
@@ -513,8 +673,8 @@
           "method": "btree",
           "with": {}
         },
-        "transactions_wallet_block_height_idx": {
-          "name": "transactions_wallet_block_height_idx",
+        "financials_transaction_wallet_block_height_idx": {
+          "name": "financials_transaction_wallet_block_height_idx",
           "columns": [
             {
               "expression": "wallet_id",
@@ -536,10 +696,10 @@
         }
       },
       "foreignKeys": {
-        "transactions_wallet_id_wallets_id_fk": {
-          "name": "transactions_wallet_id_wallets_id_fk",
-          "tableFrom": "transactions",
-          "tableTo": "wallets",
+        "financials_transaction_wallet_id_financials_wallet_id_fk": {
+          "name": "financials_transaction_wallet_id_financials_wallet_id_fk",
+          "tableFrom": "financials_transaction",
+          "tableTo": "financials_wallet",
           "columnsFrom": [
             "wallet_id"
           ],
@@ -547,6 +707,19 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "financials_transaction_account_id_financials_account_id_fk": {
+          "name": "financials_transaction_account_id_financials_account_id_fk",
+          "tableFrom": "financials_transaction",
+          "tableTo": "financials_account",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
           "onUpdate": "no action"
         }
       },
@@ -556,8 +729,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.wallets": {
-      "name": "wallets",
+    "public.financials_wallet": {
+      "name": "financials_wallet",
       "schema": "",
       "columns": {
         "id": {
@@ -601,10 +774,10 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "wallets_address_id_addresses_id_fk": {
-          "name": "wallets_address_id_addresses_id_fk",
-          "tableFrom": "wallets",
-          "tableTo": "addresses",
+        "financials_wallet_address_id_financials_address_id_fk": {
+          "name": "financials_wallet_address_id_financials_address_id_fk",
+          "tableFrom": "financials_wallet",
+          "tableTo": "financials_address",
           "columnsFrom": [
             "address_id"
           ],
@@ -617,8 +790,8 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "wallets_name_unique": {
-          "name": "wallets_name_unique",
+        "financials_wallet_name_unique": {
+          "name": "financials_wallet_name_unique",
           "nullsNotDistinct": false,
           "columns": [
             "name"

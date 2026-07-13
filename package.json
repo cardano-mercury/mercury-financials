@@ -16,7 +16,7 @@
 		"test:watch": "vitest",
 		"db:start": "docker compose up -d",
 		"db:stop": "docker compose down",
-		"db:push": "drizzle-kit push",
+		"db:auth": "psql \"$DATABASE_URL\" -f drizzle/manual/shared-auth-tables.sql",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
 		"db:studio": "drizzle-kit studio"

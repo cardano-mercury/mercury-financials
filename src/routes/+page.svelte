@@ -2,8 +2,9 @@
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { enhance } from '$app/forms';
+	import { resolve } from '$app/paths';
 
-	let { form } = $props();
+	let { data, form } = $props();
 
 	let name = $state('');
 	let address = $state('');
@@ -79,4 +80,10 @@
 	<p class="mt-4 text-center text-sm text-ink-400">
 		Add more wallets any time. Reports consolidate across all of them.
 	</p>
+	{#if data.entityName === 'Your Entity'}
+		<p class="mt-2 text-center text-sm text-ink-400">
+			Your statements are still headed "Your Entity".
+			<a href={resolve('/settings')} class="text-mercury-ink underline">Name your entity</a>.
+		</p>
+	{/if}
 </div>

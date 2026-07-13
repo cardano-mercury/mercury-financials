@@ -9,7 +9,8 @@
 	const nav = [
 		{ href: '/transactions', label: 'Transactions' },
 		{ href: '/address-book', label: 'Address book' },
-		{ href: '/reports', label: 'Reports' }
+		{ href: '/reports', label: 'Reports' },
+		{ href: '/settings', label: 'Settings' }
 	] as const;
 </script>
 
@@ -37,7 +38,12 @@
 
 			{#if data.user}
 				<div class="flex items-center gap-3">
-					<span class="eyebrow hidden sm:block">{data.entityName}</span>
+					<a
+						href={resolve('/settings')}
+						class="eyebrow hidden hover:text-ink-900 sm:block"
+					>
+						{data.entityName}
+					</a>
 					<form method="POST" action="/signout">
 						<button type="submit" class="text-sm text-ink-400 hover:text-ink-900"
 							>Sign out</button
