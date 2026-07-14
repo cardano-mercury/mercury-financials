@@ -89,10 +89,31 @@ callers.
 
 **Leave it `false` on a private instance.** It publishes that instance's books.
 
-Seed the demo before sharing the link, or reviewers land on empty statements: sign in, add a wallet,
-let the Blockfrost sync finish (it pages through history in the background), categorise anything
-that matters, and set the entity name under Settings. A fresh instance shows "Your Entity" until you
-do.
+### Seeding the demo
+
+A fresh instance has no wallet, so `/demo` shows empty statements until you give it one. This is a
+one-time manual pass on the host:
+
+1. Open the site and sign up. In `SINGLE_USER_MODE` (the default) the first sign-up claims the
+   instance and sign-ups then close, so do this before sharing the link.
+2. Set the entity name under **Settings**. Until you do, every statement is headed "Your Entity".
+3. Add the wallet, and wait for the background Blockfrost sync to finish (it pages through history;
+   about 140 seconds for the wallet below).
+
+The wallet chosen for the demo is the **Cardanesia stake pool** (ticker ADI, mainnet):
+
+```
+addr1qyeq2t80vfld0egtzeqqp06ttpf7x9qyzuu3rjnsjlsa8je95xqyq8n4pgp4fahltvy4gz29wyttzz9pxt4qsu4r3z3qwyv0ms
+```
+
+It gives 502 transactions from 2022 to 2026, 43 counterparties, 30 native assets and 184 reward
+withdrawals, and the trial balance balances. A stake pool operator is a real small business, which
+is the story this tool is telling, and it exercises every part of the PRD at a size the UI can
+render.
+
+Counterparty count, not transaction count, is what makes a wallet usable here: the address book
+renders every known address in one form, so a large pool paying out to thousands of delegators
+becomes unusable. That ruled out several bigger candidates.
 
 ## Images
 

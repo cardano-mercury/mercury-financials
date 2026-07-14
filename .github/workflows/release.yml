@@ -13,9 +13,12 @@ name: Release
 # A v* tag cuts a release. Pushes to main refresh the rolling `main` tag so the demo host can track
 # it without waiting for a version bump.
 
+# `rewrite/sveltekit` is listed alongside main because the app currently lives there: main still
+# holds only the LICENSE, README and the PRD. Drop it from this list once the rewrite lands on main.
+# A `v*` tag fires this from any branch, so a release can be cut before that merge happens.
 on:
   push:
-    branches: [main]
+    branches: [main, rewrite/sveltekit]
     tags: ['v*']
   workflow_dispatch:
 

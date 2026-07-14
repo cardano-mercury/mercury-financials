@@ -1,8 +1,10 @@
 name: CI
 
+# `rewrite/sveltekit` is listed alongside main because the app currently lives there: main still
+# holds only the LICENSE, README and the PRD. Drop it once the rewrite lands on main.
 on:
   push:
-    branches: [main]
+    branches: [main, rewrite/sveltekit]
   pull_request:
 
 jobs:
