@@ -1,20 +1,29 @@
 name: Changes
 
-# Every pull request must say what it changes and how far it moves the version, by adding a fragment
-# under `.changes/unreleased/` (see `.changes/README.md`).
+# Every pull request states what it changes and how far it moves the version, in a file committed to
+# `.changes/unreleased/` (see `.changes/README.md`).
 #
 # Fragments exist so that concurrent branches never collide. If each PR edited CHANGELOG.md and the
 # version in package.json directly, then any two PRs open at once would conflict on both files, every
 # time. A new file per PR cannot conflict, and the version is computed once, at release, from the
 # largest bump among the fragments that accumulated.
 #
-# A PR that genuinely ships nothing (docs, CI, comments, dependency bumps) carries the `no-release`
-# label instead.
+# A change that ships nothing still says so, with a `bump: none` fragment:
+#
+#   npm run change -- none ci-tidy "Reworks a workflow comment. No user-visible change."
+#
+# It is a committed file rather than a pull-request label on purpose. A label is not part of the
+# commit, it can be changed after review, and a contributor without write access cannot set one.
+#
+# The release pull request is the one thing that is *supposed* to consume every fragment, bump the
+# version and write the changelog. So it gets the opposite check, not an exemption: this job always
+# runs and always reports, and on a release PR it asserts that all three of those things happened.
+# It must not be skipped. A skipped job reports no status at all, and a required check that never
+# reports blocks the pull request forever.
 
 on:
   pull_request:
     branches: [main, development]
-    types: [opened, synchronize, reopened, labeled, unlabeled]
 
 permissions:
   contents: read
@@ -32,23 +41,76 @@ jobs:
         with:
           node-version: 22
 
-      # Validates every pending fragment's frontmatter and reports the version they would release.
-      # Fails on a malformed one, so a broken fragment is caught here rather than at release.
-      - name: Validate the pending fragments
-        run: npm run changes:check
+      - name: Is this the release pull request?
+        id: kind
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          if [[ "$HEAD_REF" == release/v* ]]; then
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: This PR adds one (or is labelled no-release)
-        if: ${{ !contains(github.event.pull_request.labels.*.name, 'no-release') }}
+      # ---- The release PR: assert it did the three things a release is meant to do. ----
+
+      - name: Release PR bumps the version, writes the changelog, and consumes the fragments
+        if: steps.kind.outputs.release == 'true'
         env:
           BASE: ${{ github.base_ref }}
         run: |
           set -euo pipefail
+          head_ver="$(node -p "require('./package.json').version")"
+          base_ver="$(git show "origin/$BASE:package.json" | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).version")"
+
+          [ "$head_ver" != "$base_ver" ] || { echo "::error::release PR does not bump the version (still $base_ver)"; exit 1; }
+          grep -qE "^## \[?${head_ver//./\\.}\]?" CHANGELOG.md || { echo "::error::CHANGELOG.md has no section for $head_ver"; exit 1; }
+
+          left="$(find .changes/unreleased -name '*.md' | wc -l)"
+          [ "$left" -eq 0 ] || { echo "::error::release PR left $left unconsumed fragment(s)"; exit 1; }
+
+          echo "release PR is well formed: $base_ver -> $head_ver, changelog written, fragments consumed"
+
+      # ---- Every other PR: a fragment, and no hand-editing of the release outputs. ----
+
+      - name: Fragments parse, and this PR adds one
+        if: steps.kind.outputs.release == 'false'
+        env:
+          BASE: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          npm run --silent changes:check
+
           added="$(git diff --name-only --diff-filter=A "origin/$BASE...HEAD" -- '.changes/unreleased/*.md' | wc -l)"
           if [ "$added" -eq 0 ]; then
-            echo "::error::This pull request adds no change fragment. Run: npm run change -- <patch|minor|major> <Added|Changed|Fixed|...> <slug> \"<what changed>\". If it genuinely ships nothing, add the 'no-release' label."
+            echo "::error::This pull request adds no change fragment. Run: npm run change -- <patch|minor|major> <Added|Changed|Fixed|...> <slug> \"<what changed>\". If it genuinely ships nothing, run: npm run change -- none <slug> \"<why>\"."
             exit 1
           fi
-          echo "$added fragment(s) added by this pull request"
+          echo "$added fragment(s) added"
 
-      - name: What this PR would release
-        run: npm run changes:preview
+      # The version and the changelog are outputs of a release, not inputs to a pull request. Editing
+      # them by hand is how two branches end up conflicting, and how a release ships a number nobody
+      # agreed on.
+      - name: The version and the changelog were not hand-edited
+        if: steps.kind.outputs.release == 'false'
+        env:
+          BASE: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+
+          if ! git diff --quiet "origin/$BASE...HEAD" -- CHANGELOG.md; then
+            echo "::error::CHANGELOG.md was edited. It is written at release, from the fragments. Add a fragment instead."
+            exit 1
+          fi
+
+          head_ver="$(node -p "require('./package.json').version")"
+          base_ver="$(git show "origin/$BASE:package.json" | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).version")"
+          if [ "$head_ver" != "$base_ver" ]; then
+            echo "::error::package.json version was changed by hand ($base_ver -> $head_ver). The bump is declared in the fragment and applied at release."
+            exit 1
+          fi
+
+          echo "version and changelog untouched, as they should be"
+
+      - name: What is pending
+        run: npm run --silent changes:preview

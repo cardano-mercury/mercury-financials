@@ -32,7 +32,10 @@ const DIR = path.join(ROOT, '.changes', 'unreleased');
 const CHANGELOG = path.join(ROOT, 'CHANGELOG.md');
 const PKG = path.join(ROOT, 'package.json');
 
-const BUMPS = ['patch', 'minor', 'major'];
+// `none` is a change that ships nothing a user would notice: docs, CI, a comment, a dependency bump.
+// It is still a committed file rather than a pull-request label, because a label is not part of the
+// commit, can be changed after review, and a contributor without write access cannot set one.
+const BUMPS = ['none', 'patch', 'minor', 'major'];
 // Keep a Changelog's categories, in the order they should appear under a version heading.
 const TYPES = ['Added', 'Changed', 'Deprecated', 'Removed', 'Fixed', 'Security'];
 
@@ -66,15 +69,22 @@ function fragments() {
 			const bump = (meta.bump ?? '').toLowerCase();
 			if (!BUMPS.includes(bump)) die(`${file}: bump must be one of ${BUMPS.join(', ')}`);
 
+			const body = m[2].trim();
+
+			// A `none` fragment releases nothing, so it needs no category and never reaches the
+			// changelog. It exists to state, in the commit, that shipping nothing was deliberate.
+			if (bump === 'none') return { file, bump, type: null, body };
+
 			const type = meta.type ?? '';
 			if (!TYPES.includes(type)) die(`${file}: type must be one of ${TYPES.join(', ')}`);
-
-			const body = m[2].trim();
 			if (!body) die(`${file}: the body is empty. Say what changed.`);
 
 			return { file, bump, type, body };
 		});
 }
+
+/** The fragments that actually move the version and appear in the changelog. */
+const releasable = (frags) => frags.filter((f) => f.bump !== 'none');
 
 const readPkg = () => JSON.parse(fs.readFileSync(PKG, 'utf8'));
 
@@ -115,11 +125,27 @@ function renderSection(version, frags, date) {
 const cmd = process.argv[2];
 
 if (cmd === 'add') {
+	// `npm run change -- none <slug> "<why nothing ships>"` for a change that releases nothing.
+	if (process.argv[3] === 'none') {
+		const [, , , , slug, ...text] = process.argv;
+		const body = text.join(' ').trim();
+		if (!slug) die('usage: npm run change -- none <slug> "<why this ships nothing>"');
+		fs.mkdirSync(DIR, { recursive: true });
+		const file = path.join(DIR, `${slug.replace(/[^a-z0-9-]/gi, '-').toLowerCase()}.md`);
+		fs.writeFileSync(
+			file,
+			`---\nbump: none\n---\n\n${body || 'Ships nothing a user would notice.'}\n`
+		);
+		console.log(`wrote ${path.relative(ROOT, file)}`);
+		process.exit(0);
+	}
+
 	const [, , , bump, type, slug, ...text] = process.argv;
 	const body = text.join(' ').trim();
 	if (!bump || !type || !slug || !body) {
 		die(
-			'usage: npm run change -- <patch|minor|major> <Added|Changed|Fixed|...> <slug> "<text>"'
+			'usage: npm run change -- <patch|minor|major> <Added|Changed|Fixed|...> <slug> "<text>"\n' +
+				'   or: npm run change -- none <slug> "<why this ships nothing>"'
 		);
 	}
 	if (!BUMPS.includes(bump)) die(`bump must be one of ${BUMPS.join(', ')}`);
@@ -136,15 +162,18 @@ if (cmd === 'add') {
 		console.log('no pending change fragments');
 		process.exit(0);
 	}
+	const rel = releasable(frags);
+	if (!rel.length) {
+		console.log(`${frags.length} pending fragment(s), all valid. None of them release anything.`);
+		process.exit(0);
+	}
 	const version = nextVersion(
 		readPkg().version,
-		frags.map((f) => f.bump)
+		rel.map((f) => f.bump)
 	);
-	console.log(
-		`${frags.length} pending fragment(s), all valid. Next version would be ${version}.`
-	);
+	console.log(`${frags.length} pending fragment(s), all valid. Next version would be ${version}.`);
 } else if (cmd === 'preview') {
-	const frags = fragments();
+	const frags = releasable(fragments());
 	if (!frags.length) {
 		console.log('nothing to release');
 		process.exit(0);
@@ -155,8 +184,10 @@ if (cmd === 'add') {
 	);
 	console.log(renderSection(version, frags, new Date().toISOString().slice(0, 10)));
 } else if (cmd === 'assemble') {
-	const frags = fragments();
-	if (!frags.length) die('nothing to release: no fragments in .changes/unreleased/');
+	const all = fragments();
+	const frags = releasable(all);
+	if (!frags.length)
+		die('nothing to release: no fragments in .changes/unreleased/ move the version');
 
 	const pkg = readPkg();
 	const version = nextVersion(
@@ -177,7 +208,9 @@ if (cmd === 'add') {
 	pkg.version = version;
 	fs.writeFileSync(PKG, JSON.stringify(pkg, null, '\t') + '\n');
 
-	for (const f of frags) fs.unlinkSync(path.join(DIR, f.file));
+	// Consume every fragment, including the `none` ones. They record a decision that has now been
+	// released past; leaving them would make them pile up until the end of time.
+	for (const f of all) fs.unlinkSync(path.join(DIR, f.file));
 
 	console.log(version);
 } else {

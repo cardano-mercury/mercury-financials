@@ -100,6 +100,6 @@ jobs:
               gh pr close "$n" --comment "Superseded by Release v$VERSION." || true
             done
             gh pr create --base main --head "release/v$VERSION" \
-              --title "Release v$VERSION" --body "$body" --label no-release
+              --title "Release v$VERSION" --body "$body"
             echo "opened the release PR for v$VERSION"
           fi

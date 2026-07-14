@@ -29,6 +29,17 @@ updates:
       semver-minor-days: 7
       semver-patch-days: 3
 
+    ignore:
+      # better-auth generates the shared auth schema, and three applications share one Postgres
+      # database. Moving it in one repo alone makes the schema diverge, and two physical copies of it
+      # are two type identities, which produces spectacular and misleading errors. It moves in
+      # financials, tokenomics and core together, deliberately, or not at all.
+      - dependency-name: better-auth
+      # A peer dependency of @cardano-mercury/core, for the same reason: the app and core must resolve
+      # the same physical copy, so core decides the version.
+      - dependency-name: drizzle-orm
+      - dependency-name: '@meshsdk/core'
+
     # One PR per severity band rather than one per package, so a quiet week is a single review and a
     # major bump never rides along inside a pile of patches.
     groups:
