@@ -10,6 +10,12 @@ time, which is why two branches in flight never conflict over a changelog entry.
 
 <!-- new releases go here -->
 
+## [0.1.1] - 2026-07-14
+
+### Security
+
+- Neutralise spreadsheet formulas in CSV exports. A cell opening with =, +, - or @ is executed by Excel and Google Sheets, and DEMO_MODE hands these exports to strangers.
+
 ## [0.1.0] - 2026-07-14
 
 The SvelteKit proof of concept, rewritten from the original Laravel app, and the first version that

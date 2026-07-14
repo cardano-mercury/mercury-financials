@@ -56,11 +56,30 @@ You do not cut one by hand.
 
 1. A PR merges into `development`. CI runs.
 2. If CI is green and fragments are pending, a **Release vX.Y.Z** pull request is opened against
-   `main` automatically. It bumps `package.json`, writes the new `CHANGELOG.md` section, and deletes
-   the fragments it consumed.
+   `main` automatically, by the org's **Mercury Release Bot**. It bumps `package.json`, writes the new
+   `CHANGELOG.md` section, and deletes the fragments it consumed.
 3. That PR runs the same CI as any other.
 4. Merging it publishes: the images go to GHCR, the commit is tagged `vX.Y.Z`, and a GitHub release
    is cut from the changelog section.
+
+The bot is a GitHub App owned by the organisation, and it is not decoration. GitHub refuses to let a
+workflow run created with the built-in `GITHUB_TOKEN` trigger further workflow runs, so a release PR
+opened that way would get **no checks at all**, they would sit at `action_required`, and they cannot
+be approved. Since `main` requires those checks, such a release could never merge, and it would look
+like an absence of checks rather than an error. An App installation token is a real actor, so what it
+pushes runs CI normally. Setup lives in mercury-core, under `.claude/app-setup/`.
+
+## How to merge
+
+- **Feature PR into `development`: squash.** One commit per change, and the branch history stays
+  readable.
+- **Release PR into `main`: merge commit.** Not a squash.
+
+That second rule is load-bearing and easy to get wrong. A squash gives `main` a commit that shares no
+recent ancestor with `development`, even when their contents are identical. Every later release PR
+then diffs against the beginning of the repository rather than against the last release: it happened
+here once, and a two-line release showed as 102 files and 16,496 insertions. A merge commit keeps
+`main` a true descendant of `development`, and the diff stays honest.
 
 Publishing is deliberately downstream of testing. Nothing is built for the registry until a gate has
 gone green on the exact commit being shipped, and no pull request can publish anything.

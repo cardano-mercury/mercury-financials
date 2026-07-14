@@ -1,0 +1,89 @@
+name: Sync back
+
+# After a release lands on main, put it back on development.
+#
+# Without this the whole scheme quietly eats itself. The release pull request is assembled on a
+# branch cut from `development`: that is where the version is bumped, the changelog section written,
+# and the consumed fragments deleted. `development` itself never sees any of it. So the moment the
+# release merges into `main`, `development` is still carrying the same fragments and the same old
+# version, the next green CI run assembles **the same release again**, and the tag it wants already
+# exists. A zombie release pull request reappears forever and nobody can say why.
+#
+# So `main` flows back. This opens an ordinary pull request rather than pushing, because
+# `development` is protected for administrators too, and nothing in this scheme is allowed to bypass
+# that. It is a merge, so `main` stays an ancestor of `development` and the next release pull request
+# keeps diffing against the last release instead of against the beginning of the repository.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: sync-back
+  cancel-in-progress: false
+
+jobs:
+  open:
+    name: Open the sync-back PR
+    runs-on: ubuntu-latest
+    steps:
+      # A real actor, so the pull request it opens gets its checks. Opened with GITHUB_TOKEN it would
+      # get none, and `development` requires three.
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        if: vars.RELEASE_APP_ID != ''
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+
+      - name: Is development already up to date?
+        id: check
+        run: |
+          set -euo pipefail
+          if git merge-base --is-ancestor origin/main origin/development; then
+            echo "::notice::development already contains main. Nothing to sync back."
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open or update it
+        if: steps.check.outputs.needed == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git config user.name "mercury-release-bot[bot]"
+          git config user.email "mercury-release-bot[bot]@users.noreply.github.com"
+
+          branch="sync/main-to-development"
+          git checkout -B "$branch" origin/development
+          # A merge, not a cherry-pick: development must end up *containing* main's commit, or the
+          # ancestry breaks again and the next release diffs against the whole repository.
+          git merge --no-ff origin/main -m "Merge main back into development" || {
+            echo "::error::merge conflict between main and development. Resolve it by hand."
+            exit 1
+          }
+          git push --force origin "$branch"
+
+          version="$(node -p "require('./package.json').version")"
+          body="$(printf 'Puts the released version back on \140development\140: the version bump, the changelog section, and the deletion of the fragments the release consumed.\n\nWithout this, \140development\140 keeps the fragments it already shipped, assembles the same release again on the next green run, and the tag it wants already exists.\n\n**Merge with a merge commit, not a squash**, so \140main\140 stays an ancestor of \140development\140.\n')"
+
+          existing="$(gh pr list --base development --head "$branch" --json number --jq '.[0].number // empty')"
+          if [ -n "$existing" ]; then
+            gh pr edit "$existing" --title "Sync main back into development (v$version)" --body "$body"
+            echo "updated PR #$existing"
+          else
+            gh pr create --base development --head "$branch" \
+              --title "Sync main back into development (v$version)" --body "$body"
+          fi
