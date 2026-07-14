@@ -59,6 +59,12 @@ jobs:
           # the version and write the changelog, so it is checked in reverse, further down.
           [[ "$HEAD_REF" == release/v* ]] && release=true
 
+          # The sync-back PR: main returning to development after a release. It carries the version
+          # bump, the changelog section and the deletion of the fragments that already shipped. Every
+          # rule below would fire on it, and all of them would be wrong: it is the release, arriving
+          # where it belongs. Treated like the release PR, and checked the same way.
+          [[ "$HEAD_REF" == sync/main-to-development ]] && release=true
+
           # Dependabot cannot commit a fragment: it opens a pull request from a template and has no
           # way to run our tooling. Requiring one would mean every dependency PR fails a required
           # check and can never merge. Whoever reviews the bump adds a fragment if it warrants a
