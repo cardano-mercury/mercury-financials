@@ -41,8 +41,11 @@ jobs:
       - name: Type check
         run: npm run check
 
-      - name: Tests
-        run: npm run test
+      # Coverage, not just tests. The thresholds in vite.config.ts are a ratchet set at what the suite
+      # actually achieves, so a change that drops coverage on the logic-bearing modules fails here
+      # rather than being noticed months later. A threshold that CI does not run is decoration.
+      - name: Tests, at the coverage threshold
+        run: npm run test:coverage
 
       # No environment is set here on purpose, and that is load-bearing. SvelteKit's postbuild
       # `analyse` step imports every server chunk, so anything constructed at module scope runs
