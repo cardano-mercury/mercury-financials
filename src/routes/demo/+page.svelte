@@ -40,15 +40,15 @@
 	<p class="eyebrow">Public demo</p>
 	<h1 class="mt-1 text-2xl font-bold">Real on-chain data, read-only</h1>
 	<p class="mt-2 max-w-3xl text-sm text-ink-600">
-		These statements are derived from a real Cardano wallet's transaction history, pulled from
-		the chain and categorised against a chart of accounts. Nothing here is editable. To connect
-		your own wallet, categorise its transactions, and export your own books,
+		These statements are derived from a real Cardano wallet's transaction history, pulled from the
+		chain and categorised against a chart of accounts. Nothing here is editable. To connect your own
+		wallet, categorise its transactions, and export your own books,
 		<a href={resolve('/login')} class="text-mercury-ink underline">sign in</a>.
 	</p>
 	<p class="mt-3 max-w-3xl text-xs text-ink-400">
-		A Catalyst proof of concept. It reads on-chain data only: no fiat conversion, no oracle
-		pricing, and figures are denominated in ADA. Statements produced here need review by a
-		qualified accountant before they are used for anything.
+		A Catalyst proof of concept. It reads on-chain data only: no fiat conversion, no oracle pricing,
+		and figures are denominated in ADA. Statements produced here need review by a qualified
+		accountant before they are used for anything.
 	</p>
 </div>
 

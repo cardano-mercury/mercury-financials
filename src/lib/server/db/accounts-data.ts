@@ -45,13 +45,7 @@ function acct(
  */
 export const CHART_OF_ACCOUNTS: SeedAccount[] = [
 	// Balance Sheet > Assets > Non Current Assets
-	acct(
-		'balance_sheet',
-		'Assets',
-		['Non Current Assets'],
-		'Property, plant and equipment',
-		'debit'
-	),
+	acct('balance_sheet', 'Assets', ['Non Current Assets'], 'Property, plant and equipment', 'debit'),
 	acct('balance_sheet', 'Assets', ['Non Current Assets'], 'Other intangible assets', 'debit'),
 	acct(
 		'balance_sheet',

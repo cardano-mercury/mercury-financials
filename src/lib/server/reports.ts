@@ -51,8 +51,7 @@ export function buildLedgerEntries(txs: LedgerTx[], ctx: LedgerContext): LedgerE
 		}
 
 		if (cashDelta !== 0n) entries.push({ accountId: ctx.cashId, amount: cashDelta });
-		if (feePortion !== 0n)
-			entries.push({ accountId: ctx.transactionCostId, amount: feePortion });
+		if (feePortion !== 0n) entries.push({ accountId: ctx.transactionCostId, amount: feePortion });
 		if (contraAmount !== 0n) entries.push({ accountId: contraId, amount: contraAmount });
 	}
 	return entries;

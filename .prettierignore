@@ -8,3 +8,11 @@ bun.lockb
 # Miscellaneous
 /static/
 /drizzle/
+
+# Generated
+/coverage/
+/build/
+/.svelte-kit/
+
+# Internal working documents
+/.claude/

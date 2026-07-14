@@ -14,10 +14,7 @@ const EXPLORER: Record<string, string> = {
 };
 
 export const load: PageServerLoad = async () => {
-	const [register, accounts] = await Promise.all([
-		loadTransactionRegister(),
-		getChartOfAccounts()
-	]);
+	const [register, accounts] = await Promise.all([loadTransactionRegister(), getChartOfAccounts()]);
 
 	return {
 		explorerBase: EXPLORER[env.BLOCKFROST_NETWORK ?? 'mainnet'] ?? EXPLORER.mainnet,

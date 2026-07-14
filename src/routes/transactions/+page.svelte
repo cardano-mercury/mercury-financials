@@ -29,9 +29,7 @@
 	function matches(r: Row, q: string) {
 		if (r.hash.includes(q) || r.date.includes(q)) return true;
 		if (r.tags.some((t) => t.includes(q))) return true;
-		return r.counterparties.some(
-			(c) => c.label.toLowerCase().includes(q) || c.bech32.includes(q)
-		);
+		return r.counterparties.some((c) => c.label.toLowerCase().includes(q) || c.bech32.includes(q));
 	}
 
 	function sortValue(r: Row, key: SortKey): bigint {
@@ -172,17 +170,13 @@
 							{#if row.counterparties.length === 0}
 								<span class="text-ink-400">—</span>
 							{:else}
-								<span
-									class="block truncate font-medium"
-									title={row.counterparties[0].bech32}
-								>
+								<span class="block truncate font-medium" title={row.counterparties[0].bech32}>
 									{row.counterparties[0].label}
 								</span>
 								{#if row.counterparties.length > 1}
 									<button
 										class="text-xs text-ink-400 hover:text-ink-900"
-										onclick={() =>
-											(expanded = expanded === row.id ? null : row.id)}
+										onclick={() => (expanded = expanded === row.id ? null : row.id)}
 									>
 										+{row.counterparties.length - 1} more
 									</button>
@@ -211,9 +205,7 @@
 									{#each data.accountGroups as g (g.label)}
 										<optgroup label={g.label}>
 											{#each g.options as opt (opt.id)}
-												<option value={opt.id} title={opt.path}
-													>{opt.name}</option
-												>
+												<option value={opt.id} title={opt.path}>{opt.name}</option>
 											{/each}
 										</optgroup>
 									{/each}
@@ -276,10 +268,7 @@
 										<ul class="space-y-1">
 											{#each row.counterparties as c (c.bech32)}
 												<li class="flex items-center gap-2">
-													<span
-														class="mono truncate text-xs"
-														title={c.bech32}
-													>
+													<span class="mono truncate text-xs" title={c.bech32}>
 														{c.named ? c.label : c.bech32}
 													</span>
 													<button

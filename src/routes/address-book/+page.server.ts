@@ -13,8 +13,7 @@ export const load: PageServerLoad = async () => {
 		addresses: rows.map((a) => ({
 			id: a.id,
 			bech32: a.bech32,
-			short:
-				a.bech32.length > 18 ? `${a.bech32.slice(0, 10)}…${a.bech32.slice(-6)}` : a.bech32,
+			short: a.bech32.length > 18 ? `${a.bech32.slice(0, 10)}…${a.bech32.slice(-6)}` : a.bech32,
 			name: a.name ?? '',
 			description: a.description ?? '',
 			isOwn: a.isOwn

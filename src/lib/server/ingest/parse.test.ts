@@ -154,9 +154,7 @@ describe('parseTransaction', () => {
 					reference: false
 				}
 			],
-			outputs: [
-				{ address: WALLET, amount: [ada(11_500_000)], output_index: 0, collateral: false }
-			]
+			outputs: [{ address: WALLET, amount: [ada(11_500_000)], output_index: 0, collateral: false }]
 		};
 
 		const { tags } = parseTransaction({
