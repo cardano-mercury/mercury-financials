@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gate:
+    name: Lint, check, test, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run lint
+      - run: npm run check
+      - run: npm run test
+
+      # No environment is set here on purpose. The build must not need a DATABASE_URL or a
+      # BETTER_AUTH_SECRET: SvelteKit's postbuild `analyse` step imports every server chunk, so any
+      # module-scope side effect would make the build require production secrets, and the Docker
+      # build (which has no .env, and had better not) would fail. Keeping this env-free is what
+      # stops that regressing.
+      - run: npm run build

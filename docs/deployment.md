@@ -94,22 +94,36 @@ let the Blockfrost sync finish (it pages through history in the background), cat
 that matters, and set the entity name under Settings. A fresh instance shows "Your Entity" until you
 do.
 
-## Building the image
+## Images
 
-An ordinary single-context build, since `@cardano-mercury/core` installs from npm:
+CI publishes two images to GHCR, so the deploy host never builds anything:
+
+| image                                                | Dockerfile target | size   |
+| ---------------------------------------------------- | ----------------- | ------ |
+| `ghcr.io/cardano-mercury/mercury-financials`         | `runner`          | 433 MB |
+| `ghcr.io/cardano-mercury/mercury-financials-migrate` | `migrate`         | 219 MB |
+
+Two, not one, because the runner is installed with `npm ci --omit=dev` and `drizzle-kit` is a
+devDependency, so the runner cannot migrate. The stack runs the migrate image as a one-shot before
+the app starts.
+
+The migrate image is built from scratch rather than from the build stage, and carries only
+`drizzle-kit`, `drizzle-orm`, `postgres` and the committed SQL. Reusing the build stage would be one
+line, but it lands a full dev toolchain (~570 MB) on the production host to run a query that takes
+two seconds.
+
+`.github/workflows/release.yml` runs the whole gate (lint, check, test, build) before it pushes, and
+audits the pushed image for a baked-in `.env`. A `v*` tag cuts a release and moves `latest`; pushes
+to `main` refresh a rolling `main` tag. Every image also gets a `sha-<short>` tag so a deploy can be
+pinned to an exact commit.
+
+**The GHCR packages must be public**, or every `docker compose pull` on the host needs a token.
+That setting lives on the package, not the repo, and has to be set once after the first publish.
+
+To build locally (an ordinary single-context build, since core installs from npm):
 
 ```sh
 docker build -t mercury-financials .
-```
-
-The Dockerfile has two useful targets:
-
-- `runner` (default): production dependencies plus the built server. Runs as the unprivileged `node`
-  user, exposes 3000, and has a `HEALTHCHECK` against `/healthz`.
-- `migrate`: keeps the dev dependencies, because `drizzle-kit` is one. Run it as a one-shot before
-  starting the app.
-
-```sh
 docker build --target migrate -t mercury-financials-migrate .
 docker run --rm -e DATABASE_URL=... mercury-financials-migrate
 ```

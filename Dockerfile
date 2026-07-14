@@ -19,11 +19,43 @@ COPY . .
 RUN npm run build
 
 
-# Migration stage: keeps the dev dependencies, because drizzle-kit is one of them. Run as a one-shot
-# before the app starts. This applies ONLY financials' own financials_* tables; the shared auth
-# tables belong to core and are applied by `npx mercury-core migrate`, which must run first (see
-# docs/deployment.md, and note tokenomics foreign-keys to "user").
-FROM builder AS migrate
+# Migration stage. Run as a one-shot before the app starts. This applies ONLY financials' own
+# financials_* tables; the shared auth tables belong to core and are applied by
+# `npx mercury-core migrate`, which must run first (see docs/deployment.md, and note that tokenomics
+# foreign-keys to "user").
+#
+# Built from scratch rather than from `builder`, and it carries none of the app's dependencies. It
+# needs three packages and the committed SQL, nothing else: not @meshsdk/core, not the Svelte
+# toolchain, not the app source. `builder` would work and would be one line, but it lands ~570 MB of
+# dev toolchain on the production host to run a query that takes two seconds. This is ~150 MB.
+#
+# The versions are lifted from package.json so this cannot silently drift from the drizzle-kit the
+# migrations were generated with.
+FROM base AS migrate
+
+ENV NODE_ENV=production
+
+# Generate a fresh, minimal manifest rather than reusing the app's. `npm install` installs whatever
+# is declared in the package.json it finds, so copying the app's manifest here drags in the entire
+# runtime tree (@meshsdk, @cardano-sdk, lucide) that a migration has no use for.
+COPY package.json /tmp/app-package.json
+RUN node -e "\
+	const d = require('/tmp/app-package.json').devDependencies; \
+	const pick = ['drizzle-kit', 'drizzle-orm', 'postgres']; \
+	const deps = Object.fromEntries(pick.map((n) => [n, d[n]])); \
+	for (const [n, v] of Object.entries(deps)) if (!v) throw new Error('missing devDependency: ' + n); \
+	require('fs').writeFileSync('package.json', JSON.stringify( \
+		{ name: 'financials-migrate', private: true, type: 'module', dependencies: deps }, null, 2)); \
+	" \
+	&& npm install --no-audit --no-fund \
+	&& npm cache clean --force
+
+# drizzle.config.ts reads DATABASE_URL and points at ./drizzle. It also names the schema file, but
+# `migrate` only applies the committed SQL and never reads the schema, so the app source is not
+# needed here.
+COPY drizzle.config.ts ./
+COPY drizzle ./drizzle
+
 CMD ["npx", "drizzle-kit", "migrate"]
 
 
