@@ -71,13 +71,15 @@ updates:
       time: '06:00'
       timezone: Etc/UTC
     open-pull-requests-limit: 3
-    # An action is executable code running with our GITHUB_TOKEN and packages:write. A compromised
-    # tag here is at least as dangerous as a compromised npm package, so it cools down the same way.
+    # An action is executable code running with our GITHUB_TOKEN and packages:write, so a compromised
+    # tag here is at least as dangerous as a compromised npm package.
+    #
+    # Dependabot only accepts the per-severity cooldowns (semver-major-days and friends) for semver
+    # ecosystems, and rejects the whole config if you set them here. Actions get the flat 14 days
+    # instead: with no way to tell a major from a patch, the longer window is the safe reading, and
+    # these are the updates worst placed to be taken on trust.
     cooldown:
-      default-days: 7
-      semver-major-days: 14
-      semver-minor-days: 7
-      semver-patch-days: 3
+      default-days: 14
     groups:
       actions-patch:
         applies-to: version-updates
@@ -100,11 +102,10 @@ updates:
       time: '06:00'
       timezone: Etc/UTC
     open-pull-requests-limit: 2
+    # Same restriction as github-actions: no per-severity cooldowns outside a semver ecosystem. The
+    # base image is an official node tag, so a flat week is proportionate.
     cooldown:
       default-days: 7
-      semver-major-days: 14
-      semver-minor-days: 7
-      semver-patch-days: 3
     groups:
       docker-base:
         applies-to: version-updates
