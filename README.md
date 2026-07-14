@@ -1,5 +1,8 @@
 # Mercury Financials
 
+[![CI](https://github.com/cardano-mercury/mercury-financials/actions/workflows/ci.yml/badge.svg)](https://github.com/cardano-mercury/mercury-financials/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
 A single-user tool that pulls a Cardano wallet's on-chain history and turns it into financial
 reports: Trial Balance, Balance Sheet, P&L, and CSV export. It reads transaction and UTxO data
 from Blockfrost, works out the spends and receives per counterparty from the eUTxO data, and maps
@@ -7,8 +10,16 @@ that toward double-entry accounting. It's a Catalyst proof of concept, so it sto
 data and leaves fiat conversion and full multi-address handling out of scope. See `docs/prd.md`
 for the product context.
 
+**It is a proof of concept, not an accounting system.** No fiat conversion, no oracle pricing, no
+full multi-address wallet handling. Anything it produces needs review by a qualified accountant
+before it is used for anything that matters.
+
 It was rewritten from an earlier Laravel app to SvelteKit. The old Laravel code lives in
 `archive/` (not tracked) for reference. Don't build on it.
+
+Contributing: [CONTRIBUTING.md](CONTRIBUTING.md) (note that pull requests add a change fragment
+rather than editing the changelog). Security: [SECURITY.md](SECURITY.md). Deployment:
+[docs/deployment.md](docs/deployment.md). Releases: [CHANGELOG.md](CHANGELOG.md).
 
 ## Stack
 
@@ -76,4 +87,3 @@ See `docs/deployment.md`: the shared-database rules and migration order, the env
 the `DEMO_MODE` public read-only demo, and how to build the image. The stack that runs financials
 and tokenomics together on one machine (Caddy, Postgres, Redis, both apps) lives in mercury-core
 under `deploy/`.
-probe

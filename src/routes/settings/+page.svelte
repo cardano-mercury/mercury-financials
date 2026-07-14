@@ -8,8 +8,7 @@
 	<p class="eyebrow text-center">Settings</p>
 	<h1 class="mt-1 text-center text-2xl font-bold">Who are these statements for?</h1>
 	<p class="mt-2 text-center text-sm text-ink-400">
-		This name prints at the top of the Trial Balance, Balance Sheet, P&amp;L, and every CSV
-		export.
+		This name prints at the top of the Trial Balance, Balance Sheet, P&amp;L, and every CSV export.
 	</p>
 
 	<form method="POST" use:enhance class="mt-8 space-y-4">

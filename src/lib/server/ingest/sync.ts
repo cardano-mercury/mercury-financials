@@ -41,9 +41,7 @@ async function persistFlows(
 	}
 
 	for (const flow of flows) {
-		const counterpartyId = flow.counterparty
-			? await getOrCreateAddressId(flow.counterparty)
-			: null;
+		const counterpartyId = flow.counterparty ? await getOrCreateAddressId(flow.counterparty) : null;
 		const fromAddressId = flow.kind === 'spend' ? walletAddressId : counterpartyId;
 		const toAddressId = flow.kind === 'spend' ? counterpartyId : walletAddressId;
 
@@ -86,9 +84,7 @@ export async function syncWalletPage(walletId: number): Promise<SyncPageResult> 
 	const isOwn = makeOwnershipTest(wallet.address.bech32, wallet.address.stakeKey);
 
 	const ownAddresses = new Set(
-		(await db.query.addresses.findMany({ where: eq(addresses.isOwn, true) })).map(
-			(a) => a.bech32
-		)
+		(await db.query.addresses.findMany({ where: eq(addresses.isOwn, true) })).map((a) => a.bech32)
 	);
 
 	const [latest] = await db
@@ -198,16 +194,11 @@ export async function reparseWallet(walletId: number): Promise<number> {
 
 	const isOwn = makeOwnershipTest(wallet.address.bech32, wallet.address.stakeKey);
 	const ownAddresses = new Set(
-		(await db.query.addresses.findMany({ where: eq(addresses.isOwn, true) })).map(
-			(a) => a.bech32
-		)
+		(await db.query.addresses.findMany({ where: eq(addresses.isOwn, true) })).map((a) => a.bech32)
 	);
 
 	const stale = await db.query.transactions.findMany({
-		where: and(
-			eq(transactions.walletId, walletId),
-			lt(transactions.parserVersion, PARSER_VERSION)
-		)
+		where: and(eq(transactions.walletId, walletId), lt(transactions.parserVersion, PARSER_VERSION))
 	});
 
 	let count = 0;

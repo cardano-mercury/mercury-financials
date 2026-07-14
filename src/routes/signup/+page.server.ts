@@ -21,8 +21,7 @@ export const actions: Actions = {
 		// Re-check at submit time so the close-after-first-account guard can't be raced.
 		if (!(await signupsOpen())) redirect(303, '/login');
 
-		if (!name || !email)
-			return fail(400, { message: 'Name and email are required.', name, email });
+		if (!name || !email) return fail(400, { message: 'Name and email are required.', name, email });
 		if (password.length < 8) {
 			return fail(400, { message: 'Password must be at least 8 characters.', name, email });
 		}

@@ -1,0 +1,8 @@
+# Every change needs a review from the maintainer. Branch protection makes this binding on main.
+*       @Crypto2099
+
+# The pieces where a mistake is expensive or silent.
+/.github/           @Crypto2099
+/drizzle/           @Crypto2099
+/src/lib/server/    @Crypto2099
+/SECURITY.md        @Crypto2099

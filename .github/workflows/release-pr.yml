@@ -1,0 +1,105 @@
+name: Release PR
+
+# Keeps a "Release vX.Y.Z" pull request open against main, holding everything on development that has
+# not shipped yet.
+#
+# This is what lets main stay strictly gated. Nothing pushes to main: the version bump and the
+# assembled changelog arrive as an ordinary pull request, which runs the same CI as any other, and
+# merging it is the act that publishes. No bot needs permission to bypass branch protection.
+#
+# It runs after CI succeeds on development, so a release PR can only ever be raised from a green
+# commit.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [development]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: release-pr
+  cancel-in-progress: false
+
+jobs:
+  open:
+    name: Open or update the release PR
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: development
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Anything to release?
+        id: pending
+        run: |
+          set -euo pipefail
+          count="$(find .changes/unreleased -name '*.md' | wc -l)"
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          if [ "$count" -eq 0 ]; then
+            echo "::notice::No pending change fragments. Nothing to release."
+          fi
+
+      # Assemble on a branch: bump package.json, write the CHANGELOG section, delete the fragments.
+      # The branch is rebuilt from development every time, so it always reflects the current state
+      # rather than accumulating stale commits.
+      - name: Assemble the release
+        if: steps.pending.outputs.count != '0'
+        id: assemble
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          version="$(node scripts/changes.mjs assemble "$(date -u +%Y-%m-%d)")"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+          git checkout -B "release/v$version"
+          git add -A
+          git commit -m "Release v$version"
+          git push --force origin "release/v$version"
+
+      - name: Open or update the pull request
+        if: steps.pending.outputs.count != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.assemble.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          notes="$(awk -v v="$VERSION" '
+            $0 ~ "^## \\[?" v "\\]?" { on = 1; next }
+            on && /^## / { exit }
+            on { print }
+          ' CHANGELOG.md)"
+
+          body="$(printf 'Assembled from the change fragments on \140development\140.\n\nMerging this publishes **v%s**: CI runs, then the release workflow pushes the images to GHCR, tags \140v%s\140, and cuts the GitHub release.\n\n---\n%s\n' "$VERSION" "$VERSION" "$notes")"
+
+          existing="$(gh pr list --base main --head "release/v$VERSION" --json number --jq '.[0].number // empty')"
+          if [ -n "$existing" ]; then
+            gh pr edit "$existing" --title "Release v$VERSION" --body "$body"
+            echo "updated PR #$existing"
+          else
+            # Close any superseded release PR, so only one is ever open.
+            for n in $(gh pr list --base main --json number,headRefName \
+                        --jq '.[] | select(.headRefName | startswith("release/v")) | .number'); do
+              gh pr close "$n" --comment "Superseded by Release v$VERSION." || true
+            done
+            gh pr create --base main --head "release/v$VERSION" \
+              --title "Release v$VERSION" --body "$body"
+            echo "opened the release PR for v$VERSION"
+          fi

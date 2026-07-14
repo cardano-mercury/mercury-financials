@@ -1,0 +1,21 @@
+name: Feature request
+description: Suggest something the tool should do.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do that you cannot do today? Describe the situation, not the solution.
+    validations: { required: true }
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you have in mind
+    validations: { required: true }
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope
+      options:
+        - label: I have read the proof-of-concept limits in the README (no fiat conversion, no oracle pricing, no full multi-address handling) and this is not one of them.

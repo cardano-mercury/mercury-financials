@@ -180,10 +180,10 @@ models, are not covered in this POC.
   USD or ADA equivalent is not included and may come in later stages.
 - **Complexity of UTXO Models:** Handling multiple addresses and accounts related to a
   wallet seed phrase for comprehensive financial data is complex and not fully addressed.
-    - The rewards accrued by an wallet are not residing on a Utxo and the people have
-      to manually collect them in a Utxo through a transaction, we need to know the
-      time period in which the the rewards accrued in the wallet, rather then when the
-      rewards were collected in a Utxo.
+  - The rewards accrued by an wallet are not residing on a Utxo and the people have
+    to manually collect them in a Utxo through a transaction, we need to know the
+    time period in which the the rewards accrued in the wallet, rather then when the
+    rewards were collected in a Utxo.
 
 ## Dependencies
 
@@ -209,13 +209,13 @@ become automatically populated.
 ## Implementation Timeline
 
 - **Milestone 1: Product Requirement Document (September)**
-    - https://milestones.projectcatalyst.io/projects/1200146/milestones/1
+  - https://milestones.projectcatalyst.io/projects/1200146/milestones/1
 - **Milestone 2: UX/UI Design Draft and Report (October)**
-    - https://milestones.projectcatalyst.io/projects/1200146/milestones/2
+  - https://milestones.projectcatalyst.io/projects/1200146/milestones/2
 - **Milestone 3: Proof of Concept Development (November)**
-    - https://milestones.projectcatalyst.io/projects/1200146/milestones/3
+  - https://milestones.projectcatalyst.io/projects/1200146/milestones/3
 - **Milestone 4: Project Closeout (December)**
-    - https://milestones.projectcatalyst.io/projects/1200146/milestones/4
+  - https://milestones.projectcatalyst.io/projects/1200146/milestones/4
 
 ## Future Directions and Upgrades
 

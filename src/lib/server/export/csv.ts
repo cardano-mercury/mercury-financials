@@ -4,9 +4,26 @@ import type { RegisterRow } from '$lib/server/transactions';
 
 type Cell = string | number;
 
+/**
+ * Excel and Google Sheets treat a cell opening with =, +, - or @ as a formula rather than as text,
+ * and run it when the file is opened. Every free-text value we export is a candidate: counterparty
+ * names and the entity name are typed by the operator, tags are free-form, and DEMO_MODE publishes
+ * these exports to strangers, so the operator's text lands in other people's spreadsheets.
+ *
+ * A leading minus is the awkward case, because a negative amount is not a formula. Guard it only
+ * when the cell is not simply a number.
+ */
+function isFormula(s: string): boolean {
+	if (/^[=+@\t\r]/.test(s)) return true;
+	return s.startsWith('-') && !/^-\d+(\.\d+)?$/.test(s);
+}
+
 function csvCell(value: Cell): string {
-	const s = String(value);
-	return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+	// Numbers are never formulas, so they are never prefixed: -42 must stay -42.
+	let s = String(value);
+	if (typeof value === 'string' && isFormula(s)) s = `'${s}`;
+
+	return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
 export function toCsv(rows: Cell[][]): string {

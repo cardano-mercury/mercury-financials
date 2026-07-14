@@ -38,16 +38,11 @@
 
 			{#if data.user}
 				<div class="flex items-center gap-3">
-					<a
-						href={resolve('/settings')}
-						class="eyebrow hidden hover:text-ink-900 sm:block"
-					>
+					<a href={resolve('/settings')} class="eyebrow hidden hover:text-ink-900 sm:block">
 						{data.entityName}
 					</a>
 					<form method="POST" action="/signout">
-						<button type="submit" class="text-sm text-ink-400 hover:text-ink-900"
-							>Sign out</button
-						>
+						<button type="submit" class="text-sm text-ink-400 hover:text-ink-900">Sign out</button>
 					</form>
 				</div>
 			{/if}

@@ -38,8 +38,7 @@
 		</form>
 
 		<p class="mt-4 text-center text-sm text-ink-400">
-			Already have an account? <a href={resolve('/login')} class="text-mercury-ink">Sign in</a
-			>
+			Already have an account? <a href={resolve('/login')} class="text-mercury-ink">Sign in</a>
 		</p>
 	</div>
 </div>
