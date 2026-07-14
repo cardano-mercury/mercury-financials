@@ -1,0 +1,54 @@
+name: Changes
+
+# Every pull request must say what it changes and how far it moves the version, by adding a fragment
+# under `.changes/unreleased/` (see `.changes/README.md`).
+#
+# Fragments exist so that concurrent branches never collide. If each PR edited CHANGELOG.md and the
+# version in package.json directly, then any two PRs open at once would conflict on both files, every
+# time. A new file per PR cannot conflict, and the version is computed once, at release, from the
+# largest bump among the fragments that accumulated.
+#
+# A PR that genuinely ships nothing (docs, CI, comments, dependency bumps) carries the `no-release`
+# label instead.
+
+on:
+  pull_request:
+    branches: [main, development]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  fragment:
+    name: Change fragment present and valid
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Validates every pending fragment's frontmatter and reports the version they would release.
+      # Fails on a malformed one, so a broken fragment is caught here rather than at release.
+      - name: Validate the pending fragments
+        run: npm run changes:check
+
+      - name: This PR adds one (or is labelled no-release)
+        if: ${{ !contains(github.event.pull_request.labels.*.name, 'no-release') }}
+        env:
+          BASE: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          added="$(git diff --name-only --diff-filter=A "origin/$BASE...HEAD" -- '.changes/unreleased/*.md' | wc -l)"
+          if [ "$added" -eq 0 ]; then
+            echo "::error::This pull request adds no change fragment. Run: npm run change -- <patch|minor|major> <Added|Changed|Fixed|...> <slug> \"<what changed>\". If it genuinely ships nothing, add the 'no-release' label."
+            exit 1
+          fi
+          echo "$added fragment(s) added by this pull request"
+
+      - name: What this PR would release
+        run: npm run changes:preview

@@ -1,0 +1,44 @@
+name: Bug report
+description: Something behaves incorrectly.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please do not report security vulnerabilities here. See [SECURITY.md](https://github.com/cardano-mercury/mercury-financials/blob/main/SECURITY.md).
+
+        A note on scope: this is a proof of concept. It does no fiat conversion, no oracle pricing,
+        and no full multi-address wallet handling. Those are documented limits rather than bugs.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: And what you expected instead.
+    validations: { required: true }
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      placeholder: |
+        1. Add a wallet by ...
+        2. Sync it
+        3. Open /reports
+    validations: { required: true }
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The release, or the commit you are on.
+    validations: { required: true }
+  - type: dropdown
+    id: network
+    attributes:
+      label: Cardano network
+      options: [mainnet, preprod, preview, not applicable]
+    validations: { required: true }
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Server output, or the browser console. **Redact your Blockfrost project id and any secret.**
+      render: shell

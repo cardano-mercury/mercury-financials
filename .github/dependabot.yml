@@ -1,0 +1,103 @@
+version: 2
+
+# One scan a week, and nothing brand new gets in.
+#
+# The cooldown is a supply-chain control, not tidiness. The realistic attack is not a bug in a
+# dependency, it is a maintainer account being taken over and a malicious version published: the
+# window between that publish and the ecosystem noticing is usually hours to a couple of days. A bot
+# that opens a PR the moment a version appears is a delivery mechanism for exactly that. Letting a
+# release age first means someone else finds the poisoned package before it reaches our lockfile.
+#
+# Security updates are configured separately below and deliberately move fast: a known CVE with a fix
+# available is a different risk from an unvetted new release, and waiting there would be backwards.
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Etc/UTC
+    open-pull-requests-limit: 5
+    versioning-strategy: increase
+
+    # Age a release before we take it. Days are counted from the version's publish date.
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+      semver-minor-days: 7
+      semver-patch-days: 3
+
+    # One PR per severity band rather than one per package, so a quiet week is a single review and a
+    # major bump never rides along inside a pile of patches.
+    groups:
+      npm-patch:
+        applies-to: version-updates
+        update-types: [patch]
+      npm-minor:
+        applies-to: version-updates
+        update-types: [minor]
+      npm-major:
+        applies-to: version-updates
+        update-types: [major]
+      # A known vulnerability with a fix is not a new-release risk. These are not cooled down and are
+      # grouped together so they can be merged as one urgent PR.
+      npm-security:
+        applies-to: security-updates
+        patterns: ['*']
+
+    labels: [dependencies, no-release]
+    commit-message:
+      prefix: deps
+      include: scope
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Etc/UTC
+    open-pull-requests-limit: 3
+    # An action is executable code running with our GITHUB_TOKEN and packages:write. A compromised
+    # tag here is at least as dangerous as a compromised npm package, so it cools down the same way.
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+      semver-minor-days: 7
+      semver-patch-days: 3
+    groups:
+      actions-patch:
+        applies-to: version-updates
+        update-types: [patch]
+      actions-minor:
+        applies-to: version-updates
+        update-types: [minor]
+      actions-major:
+        applies-to: version-updates
+        update-types: [major]
+    labels: [dependencies, ci, no-release]
+    commit-message:
+      prefix: ci
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+      timezone: Etc/UTC
+    open-pull-requests-limit: 2
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+      semver-minor-days: 7
+      semver-patch-days: 3
+    groups:
+      docker-base:
+        applies-to: version-updates
+        patterns: ['*']
+    labels: [dependencies, no-release]
+    commit-message:
+      prefix: docker

@@ -1,7 +1,7 @@
 {
 	"name": "mercury-financials",
 	"private": true,
-	"version": "0.0.1",
+	"version": "0.1.0",
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
@@ -19,7 +19,11 @@
 		"db:auth": "mercury-core migrate",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
-		"db:studio": "drizzle-kit studio"
+		"db:studio": "drizzle-kit studio",
+		"change": "node scripts/changes.mjs add",
+		"changes:check": "node scripts/changes.mjs check",
+		"changes:preview": "node scripts/changes.mjs preview",
+		"changes:assemble": "node scripts/changes.mjs assemble"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
@@ -53,5 +57,16 @@
 		"better-auth": "~1.6.23",
 		"bullmq": "^5.79.2",
 		"ioredis": "^5.11.1"
-	}
+	},
+	"description": "Turn a Cardano wallet's on-chain history into a Trial Balance, Balance Sheet, and P&L.",
+	"license": "Apache-2.0",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/cardano-mercury/mercury-financials.git"
+	},
+	"bugs": {
+		"url": "https://github.com/cardano-mercury/mercury-financials/issues"
+	},
+	"homepage": "https://github.com/cardano-mercury/mercury-financials#readme",
+	"author": "Cardano Mercury, Inc."
 }

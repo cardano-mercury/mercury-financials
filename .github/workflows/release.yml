@@ -1,59 +1,83 @@
 name: Release
 
-# Build and push the two images the deploy stack pulls, so the demo host never has to build.
+# Publishing is deliberately downstream of testing, and never runs on a pull request.
 #
-# Two images, not one: the runner is installed with `npm ci --omit=dev` and drizzle-kit is a
-# devDependency, so the runner cannot migrate. The compose stack runs the migrate image as a one-shot
-# before the app starts (after core's own `mercury-core migrate`, which must go first because
-# tokenomics foreign-keys to the shared "user" table).
+# This is triggered by CI *succeeding on main*, not by the push itself, so an image can only be built
+# from a commit whose gate went green. A pull request therefore gets tested exactly as hard as a
+# release, with no chance of shipping anything.
 #
+# It then publishes only if package.json carries a version that has not been released before. That is
+# what makes "release only when semver was stepped" true rather than a convention: merge a change
+# that forgot to bump, and this stops at the guard. (version.yml refuses to let such a PR into main
+# in the first place; this is the backstop.)
+#
+# Artifacts:
 #   ghcr.io/cardano-mercury/mercury-financials          (target: runner)
 #   ghcr.io/cardano-mercury/mercury-financials-migrate  (target: migrate)
 #
-# A v* tag cuts a release. Pushes to main refresh the rolling `main` tag so the demo host can track
-# it without waiting for a version bump.
+# Two images, not one, because the runner is installed with `npm ci --omit=dev` and drizzle-kit is a
+# devDependency, so the runner cannot migrate. The deploy stack runs the migrate image as a one-shot
+# before the app starts.
 
-# `rewrite/sveltekit` is listed alongside main because the app currently lives there: main still
-# holds only the LICENSE, README and the PRD. Drop it from this list once the rewrite lands on main.
-# A `v*` tag fires this from any branch, so a release can be cut before that merge happens.
 on:
-  push:
-    branches: [main, rewrite/sveltekit]
-    tags: ['v*']
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
 
+permissions:
+  contents: read
+
 jobs:
-  # Never publish an image that would not have passed a PR. This is the same gate as ci.yml, run
-  # again here because a tag can point anywhere.
-  gate:
-    name: Lint, check, test, build
+  guard:
+    name: Is this version unreleased?
     runs-on: ubuntu-latest
+    # A failed or cancelled CI run must not publish. workflow_dispatch has no such run to inspect.
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    outputs:
+      publish: ${{ steps.v.outputs.publish }}
+      version: ${{ steps.v.outputs.version }}
+      sha: ${{ steps.v.outputs.sha }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
         with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run lint
-      - run: npm run check
-      - run: npm run test
-      # Deliberately no env: the build must not need production secrets. See ci.yml.
-      - run: npm run build
+          # Check out the exact commit CI validated, not whatever main happens to be now.
+          ref: ${{ github.event.workflow_run.head_sha || github.ref }}
+          fetch-depth: 0
+
+      - id: v
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          sha="$(git rev-parse HEAD)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+          if git ls-remote --exit-code --tags origin "refs/tags/v$version" >/dev/null 2>&1; then
+            echo "::notice::v$version is already released. Nothing to publish."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::v$version is new. Publishing."
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
 
   publish:
-    name: Push ${{ matrix.image }} to GHCR
-    needs: gate
+    name: Push ${{ matrix.image }}
+    needs: guard
+    if: needs.guard.outputs.publish == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
 
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         include:
           - image: mercury-financials
@@ -63,10 +87,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.guard.outputs.sha }}
 
       - uses: docker/setup-buildx-action@v3
 
-      # The built-in GITHUB_TOKEN is enough to push to this repo's own packages. No PAT to manage.
+      # The built-in GITHUB_TOKEN can push to this repo's own packages. No PAT to manage.
       - uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -78,15 +104,13 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=ref,event=branch
+            type=raw,value=${{ needs.guard.outputs.version }}
+            type=raw,value=latest
             type=sha,prefix=sha-,format=short
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
 
       # Single-context build: @cardano-mercury/core comes from npm, so nothing outside this repo is
-      # needed. amd64 only; add linux/arm64 here if the demo VM ever turns out to be ARM (it roughly
-      # doubles build time, so it is not on by default).
+      # needed. amd64 only; add linux/arm64 if the host ever turns out to be ARM (it roughly doubles
+      # build time, so it is not on by default).
       - uses: docker/build-push-action@v6
         with:
           context: .
@@ -98,15 +122,53 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,scope=${{ matrix.image }},mode=max
 
-      # A published image with a secret in it is worse than no image. This is cheap, so it runs on
-      # every push rather than being left to a runbook someone forgets. Mirrors core's
-      # deploy/audit-images.sh.
-      - name: Audit the pushed image for baked-in secrets
+      # A published image with a secret in it is worse than no image. Cheap, so it runs every time
+      # rather than living in a runbook someone forgets. An earlier build baked .env in, because
+      # docker reads .dockerignore from the build-context root and the context was the parent
+      # directory. It is fixed, but the check stays.
+      - name: Audit the pushed image for a baked-in .env
         run: |
-          IMAGE="${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:sha-$(git rev-parse --short HEAD)"
-          echo "auditing $IMAGE"
-          if docker run --rm --entrypoint sh "$IMAGE" -c 'ls -a /app 2>/dev/null' | grep -qE '^\.env'; then
-            echo "::error::an .env file is present in $IMAGE"
+          set -euo pipefail
+          image="${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:${{ needs.guard.outputs.version }}"
+          if docker run --rm --entrypoint sh "$image" -c 'ls -a /app 2>/dev/null' | grep -qE '^\.env'; then
+            echo "::error::an .env file is present in $image"
             exit 1
           fi
-          echo "no .env in the image"
+          echo "no .env in $image"
+
+  tag:
+    name: Tag and release v${{ needs.guard.outputs.version }}
+    needs: [guard, publish]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.guard.outputs.sha }}
+          fetch-depth: 0
+
+      # Tag only once the images are actually in the registry, so a tag always means a real release.
+      - name: Create the tag and the GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.guard.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "v$VERSION" -m "v$VERSION"
+          git push origin "v$VERSION"
+
+          # Lift this version's section out of the changelog for the release notes, so they are
+          # written by a person rather than generated from commit subjects.
+          notes="$(awk -v v="$VERSION" '
+            $0 ~ "^## \\[?" v "\\]?" { on = 1; next }
+            on && /^## / { exit }
+            on { print }
+          ' CHANGELOG.md)"
+          [ -n "$notes" ] || notes="See CHANGELOG.md."
+
+          printf '%s\n' "$notes" | gh release create "v$VERSION" \
+            --title "v$VERSION" \
+            --notes-file -
