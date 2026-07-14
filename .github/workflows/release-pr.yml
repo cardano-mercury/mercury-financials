@@ -9,6 +9,17 @@ name: Release PR
 #
 # It runs after CI succeeds on development, so a release PR can only ever be raised from a green
 # commit.
+#
+# The pull request is opened as the org's Mercury Release Bot, not with GITHUB_TOKEN, and that is
+# load-bearing rather than cosmetic. GitHub refuses to let a workflow run created with GITHUB_TOKEN
+# trigger further workflow runs, so a release PR opened that way gets **no checks at all**: they come
+# back `action_required`, and they cannot be approved (`POST /actions/runs/{id}/approve` answers 403,
+# "This run is not from a fork pull request"). main requires those checks, so the release could never
+# merge, and it would present as an absence of checks rather than as an error. A GitHub App
+# installation token is a real actor, so what it pushes runs CI normally.
+#
+# Setup is in mercury-core/.claude/app-setup/README.md. The App is installed org-wide and its two
+# values are org-level, so there is nothing to configure per repo.
 
 on:
   workflow_run:
@@ -33,10 +44,24 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'success'
     steps:
+      # Mint an installation token for the Mercury Release Bot. Skipped when the App is not
+      # configured, so the workflow still assembles the release; its pull request just will not have
+      # working checks, and the body below says so rather than leaving the next person to work it out.
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        if: vars.RELEASE_APP_ID != ''
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
       - uses: actions/checkout@v4
         with:
           ref: development
           fetch-depth: 0
+          # The token the later `git push` inherits. This is the half people forget: authenticating
+          # `gh` but leaving checkout on the default token means the branch is still pushed by
+          # GITHUB_TOKEN, and the pull request still gets no checks.
+          token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-node@v4
         with:
@@ -59,11 +84,11 @@ jobs:
         if: steps.pending.outputs.count != '0'
         id: assemble
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "mercury-release-bot[bot]"
+          git config user.email "mercury-release-bot[bot]@users.noreply.github.com"
 
           version="$(node scripts/changes.mjs assemble "$(date -u +%Y-%m-%d)")"
           echo "version=$version" >> "$GITHUB_OUTPUT"
@@ -76,8 +101,9 @@ jobs:
       - name: Open or update the pull request
         if: steps.pending.outputs.count != '0'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.assemble.outputs.version }}
+          APP_CONFIGURED: ${{ steps.app-token.outputs.token != '' }}
         run: |
           set -euo pipefail
 
@@ -87,7 +113,18 @@ jobs:
             on { print }
           ' CHANGELOG.md)"
 
-          body="$(printf 'Assembled from the change fragments on \140development\140.\n\nMerging this publishes **v%s**: CI runs, then the release workflow pushes the images to GHCR, tags \140v%s\140, and cuts the GitHub release.\n\n---\n%s\n' "$VERSION" "$VERSION" "$notes")"
+          warning=''
+          if [ "$APP_CONFIGURED" != "true" ]; then
+            warning='> **This pull request has no checks, and cannot get any.**
+          > It was opened with `GITHUB_TOKEN`, and GitHub does not let a workflow run created with that
+          > token trigger further workflow runs. The checks will sit at `action_required` and cannot be
+          > approved. Configure the Mercury Release Bot (see `mercury-core/.claude/app-setup/README.md`)
+          > and re-run this workflow.
+
+          '
+          fi
+
+          body="$(printf '%sAssembled from the change fragments on \140development\140.\n\n**Merge this with a merge commit, not a squash.** A squash gives \140main\140 a commit that shares no ancestor with \140development\140, and every later release pull request then diffs against the beginning of the repository instead of against the last release.\n\nMerging publishes **v%s**: CI runs, then the release workflow pushes the images to GHCR, tags \140v%s\140, and cuts the GitHub release.\n\n---\n%s\n' "$warning" "$VERSION" "$VERSION" "$notes")"
 
           existing="$(gh pr list --base main --head "release/v$VERSION" --json number --jq '.[0].number // empty')"
           if [ -n "$existing" ]; then

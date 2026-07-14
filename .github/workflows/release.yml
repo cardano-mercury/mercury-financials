@@ -143,20 +143,31 @@ jobs:
     permissions:
       contents: write
     steps:
+      # The same org App as release-pr.yml, so a release is attributed to the Mercury Release Bot
+      # rather than to a generic action. Nothing here depends on the token triggering a workflow (no
+      # workflow runs on tags), so GITHUB_TOKEN would work; the App is for a coherent audit trail.
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        if: vars.RELEASE_APP_ID != ''
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
       - uses: actions/checkout@v4
         with:
           ref: ${{ needs.guard.outputs.sha }}
           fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
 
       # Tag only once the images are actually in the registry, so a tag always means a real release.
       - name: Create the tag and the GitHub release
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
           VERSION: ${{ needs.guard.outputs.version }}
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "mercury-release-bot[bot]"
+          git config user.email "mercury-release-bot[bot]@users.noreply.github.com"
           git tag -a "v$VERSION" -m "v$VERSION"
           git push origin "v$VERSION"
 
