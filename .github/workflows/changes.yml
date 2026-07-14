@@ -41,16 +41,47 @@ jobs:
         with:
           node-version: 22
 
-      - name: Is this the release pull request?
+      # Three kinds of pull request get different treatment. None of them is *skipped*: this job must
+      # always report a status, because it is a required check, and a required check that never
+      # reports blocks the pull request forever.
+      - name: What kind of pull request is this?
         id: kind
         env:
           HEAD_REF: ${{ github.head_ref }}
+          BASE: ${{ github.base_ref }}
+          ACTOR: ${{ github.actor }}
         run: |
-          if [[ "$HEAD_REF" == release/v* ]]; then
-            echo "release=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "release=false" >> "$GITHUB_OUTPUT"
-          fi
+          release=false
+          bot=false
+          bootstrap=false
+
+          # The release PR: assembled by release-pr.yml. It is *meant* to consume the fragments, bump
+          # the version and write the changelog, so it is checked in reverse, further down.
+          [[ "$HEAD_REF" == release/v* ]] && release=true
+
+          # Dependabot cannot commit a fragment: it opens a pull request from a template and has no
+          # way to run our tooling. Requiring one would mean every dependency PR fails a required
+          # check and can never merge. Whoever reviews the bump adds a fragment if it warrants a
+          # release; most do not.
+          [[ "$ACTOR" == "dependabot[bot]" ]] && bot=true
+
+          # The very first landing on a branch that has no CHANGELOG.md yet. You cannot hand-edit a
+          # file that does not exist on the base, so the "do not touch the release outputs" checks
+          # have nothing to compare against and would fail on a technicality.
+          git cat-file -e "origin/$BASE:CHANGELOG.md" 2>/dev/null || bootstrap=true
+
+          echo "release=$release"     >> "$GITHUB_OUTPUT"
+          echo "bot=$bot"             >> "$GITHUB_OUTPUT"
+          echo "bootstrap=$bootstrap" >> "$GITHUB_OUTPUT"
+          echo "release=$release bot=$bot bootstrap=$bootstrap"
+
+      - name: Dependabot is exempt from the fragment rule
+        if: steps.kind.outputs.bot == 'true'
+        run: echo "::notice::Dependabot cannot commit a fragment. Add one during review if this bump should ship a release."
+
+      - name: First landing on a base with no changelog
+        if: steps.kind.outputs.bootstrap == 'true' && steps.kind.outputs.bot == 'false'
+        run: echo "::notice::The base branch has no CHANGELOG.md, so this is the initial landing. The release-output checks have nothing to compare against and are not run."
 
       # ---- The release PR: assert it did the three things a release is meant to do. ----
 
@@ -74,7 +105,7 @@ jobs:
       # ---- Every other PR: a fragment, and no hand-editing of the release outputs. ----
 
       - name: Fragments parse, and this PR adds one
-        if: steps.kind.outputs.release == 'false'
+        if: steps.kind.outputs.release == 'false' && steps.kind.outputs.bot == 'false'
         env:
           BASE: ${{ github.base_ref }}
         run: |
@@ -92,7 +123,10 @@ jobs:
       # them by hand is how two branches end up conflicting, and how a release ships a number nobody
       # agreed on.
       - name: The version and the changelog were not hand-edited
-        if: steps.kind.outputs.release == 'false'
+        if: >
+          steps.kind.outputs.release == 'false' &&
+          steps.kind.outputs.bootstrap == 'false' &&
+          steps.kind.outputs.bot == 'false'
         env:
           BASE: ${{ github.base_ref }}
         run: |

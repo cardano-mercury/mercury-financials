@@ -44,9 +44,22 @@ delivery and is cut deliberately, not by accident.
 
 ## What CI enforces
 
-- A pull request must add at least one fragment, or carry the `no-release` label (for changes that
-  genuinely ship nothing: docs, CI, comments).
+- A pull request must add at least one fragment. If it genuinely ships nothing (docs, CI, a comment,
+  a dependency bump), that is still a fragment, with `bump: none`:
+
+  ```sh
+  npm run change -- none ci-tidy "Reworks a workflow comment. No user-visible change."
+  ```
+
+  A `none` fragment moves no version and never reaches the changelog. It is a committed file rather
+  than a label on purpose: a label is not part of the commit, it can be changed after review, and a
+  contributor without write access cannot set one.
+
 - Fragments must parse, and their `bump` and `type` must be valid.
+- CI rejects a hand-edited `CHANGELOG.md` or version. Both are outputs of a release, not inputs to a
+  pull request.
+- The release pull request is checked in reverse: it is _required_ to bump the version, write the
+  changelog and consume every fragment.
 
 ## Releasing
 

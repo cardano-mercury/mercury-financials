@@ -34,8 +34,15 @@ for a feature, `major` for a break. At release, the largest bump among the accum
 decides the new version, so you never write a version number by hand and two PRs can never disagree
 about what the next one is.
 
-If your change genuinely ships nothing a user would notice — docs, CI, comments, a dependency bump —
-label the PR `no-release` instead.
+If your change genuinely ships nothing a user would notice, say so, in a fragment:
+
+```sh
+npm run change -- none ci-tidy "Reworks a workflow comment. No user-visible change."
+```
+
+A `bump: none` fragment moves no version and never reaches the changelog. It exists so that shipping
+nothing is a decision recorded in the commit, rather than a label. A label is not part of the commit,
+it can be changed after review, and a contributor without write access cannot set one.
 
 ## How a release happens
 

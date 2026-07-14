@@ -58,7 +58,7 @@ updates:
         applies-to: security-updates
         patterns: ['*']
 
-    labels: [dependencies, no-release]
+    labels: [dependencies]
     commit-message:
       prefix: deps
       include: scope
@@ -88,7 +88,7 @@ updates:
       actions-major:
         applies-to: version-updates
         update-types: [major]
-    labels: [dependencies, ci, no-release]
+    labels: [dependencies, ci]
     commit-message:
       prefix: ci
 
@@ -109,6 +109,6 @@ updates:
       docker-base:
         applies-to: version-updates
         patterns: ['*']
-    labels: [dependencies, no-release]
+    labels: [dependencies]
     commit-message:
       prefix: docker
