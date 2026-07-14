@@ -76,3 +76,4 @@ See `docs/deployment.md`: the shared-database rules and migration order, the env
 the `DEMO_MODE` public read-only demo, and how to build the image. The stack that runs financials
 and tokenomics together on one machine (Caddy, Postgres, Redis, both apps) lives in mercury-core
 under `deploy/`.
+probe
