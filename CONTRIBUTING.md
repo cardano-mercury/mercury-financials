@@ -11,8 +11,14 @@ feature/*  ->  development  ->  main
 
 - **`main`** is what gets released. It is protected: no direct pushes, no force-pushes, and every
   change arrives through a pull request with CI green.
-- **`development`** is the integration branch. Day-to-day work targets it.
+- **`development`** is the integration branch. Day-to-day work targets it. It is protected too, and
+  for the same reason `main` is: fragments accumulate here, so a direct push that skipped the checks
+  would silently drop one and the next release would quietly miss it.
 - **Feature branches** come off `development` and go back into it.
+
+Both branches enforce their rules on administrators. That is deliberate. A gate an admin can walk
+past is a suggestion, and it was not theoretical here: an earlier commit went straight onto `main`
+while protection was on, because admins were exempt.
 
 `main` only ever receives the release pull request, which is opened automatically (see below). If you
 find yourself wanting to push straight to `main`, something has gone wrong.
