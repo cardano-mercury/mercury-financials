@@ -39,6 +39,12 @@ updates:
       # the same physical copy, so core decides the version.
       - dependency-name: drizzle-orm
       - dependency-name: '@meshsdk/core'
+      # @types/node describes the runtime we actually run. We are on Node 22, in CI and in the image,
+      # so types for a later major describe APIs that do not exist here: the compiler would accept
+      # code that throws, which is the exact failure a type checker exists to prevent. It moves when
+      # the runtime moves, and not before.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
 
     # One PR per severity band rather than one per package, so a quiet week is a single review and a
     # major bump never rides along inside a pile of patches.
@@ -106,6 +112,12 @@ updates:
     # base image is an official node tag, so a flat week is proportionate.
     cooldown:
       default-days: 7
+    ignore:
+      # Dependabot does not know what LTS means, and will cheerfully offer node:25, which is an
+      # odd-numbered release and therefore never becomes LTS. A production image runs an LTS line.
+      # Moving to the next one (24) is a decision to take deliberately, not to accept from a bot.
+      - dependency-name: node
+        update-types: ['version-update:semver-major']
     groups:
       docker-base:
         applies-to: version-updates
