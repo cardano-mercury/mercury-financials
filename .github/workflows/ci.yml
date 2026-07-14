@@ -1,0 +1,84 @@
+name: CI
+
+# The gate. This is the only workflow that decides whether code is good, and it never publishes
+# anything: releasing is release.yml's job, and it only runs after a merge to main. Keeping the two
+# apart is what lets a pull request be tested honestly without any risk of it shipping something.
+#
+# Branch flow: feature -> development -> main. Both integration branches run this on every push, and
+# every pull request runs it too, so nothing reaches main untested.
+
+on:
+  push:
+    branches: [main, development]
+  pull_request:
+  workflow_dispatch:
+
+# A new push to a PR makes the previous run pointless. Cancel it rather than pay for it.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: Lint, check, test, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint and format
+        run: npm run lint
+
+      - name: Type check
+        run: npm run check
+
+      # Coverage, not just tests. The thresholds in vite.config.ts are a ratchet set at what the suite
+      # actually achieves, so a change that drops coverage on the logic-bearing modules fails here
+      # rather than being noticed months later. A threshold that CI does not run is decoration.
+      - name: Tests, at the coverage threshold
+        run: npm run test:coverage
+
+      # No environment is set here on purpose, and that is load-bearing. SvelteKit's postbuild
+      # `analyse` step imports every server chunk, so anything constructed at module scope runs
+      # during the build. The db client and the auth instance were both like that once, which meant
+      # `npm run build` required a live DATABASE_URL and a real BETTER_AUTH_SECRET, and the Docker
+      # build (which has no .env, and had better not) could not work at all. Building with an empty
+      # environment here is what stops that regressing.
+      - name: Build (must not need any secrets)
+        run: npm run build
+
+  # A quick, cheap check that the image still builds. It does not push: publishing is release.yml.
+  # Without this, a Dockerfile break would only surface after a merge to main, during a release.
+  docker:
+    name: Docker build (no push)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build runner image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: runner
+          push: false
+          cache-from: type=gha,scope=runner
+          cache-to: type=gha,scope=runner,mode=max
+
+      - name: Build migrate image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: migrate
+          push: false
+          cache-from: type=gha,scope=migrate
+          cache-to: type=gha,scope=migrate,mode=max

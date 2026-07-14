@@ -1,0 +1,20 @@
+node_modules
+.git
+.svelte-kit
+build
+
+# Secrets. Never bake an env file into an image.
+.env
+.env.*
+!.env.example
+
+# The old Laravel app, kept locally for reference. Enormous and irrelevant to the image.
+archive
+
+# Internal working documents (design docs, finance docs).
+.claude
+
+.idea
+.vscode
+.DS_Store
+Thumbs.db

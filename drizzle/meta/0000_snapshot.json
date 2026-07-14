@@ -1,0 +1,817 @@
+{
+  "id": "74251ee6-8483-4a88-b257-fdbc8a506c13",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.financials_account": {
+      "name": "financials_account",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "statement": {
+          "name": "statement",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "section": {
+          "name": "section",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subgroups": {
+          "name": "subgroups",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "path": {
+          "name": "path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "normal_balance": {
+          "name": "normal_balance",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_cash": {
+          "name": "is_cash",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "is_internal_transfer": {
+          "name": "is_internal_transfer",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "sort_order": {
+          "name": "sort_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {
+        "financials_account_path_idx": {
+          "name": "financials_account_path_idx",
+          "columns": [
+            {
+              "expression": "path",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.financials_address": {
+      "name": "financials_address",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "bech32": {
+          "name": "bech32",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "stake_key": {
+          "name": "stake_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_own": {
+          "name": "is_own",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "financials_address_bech32_unique": {
+          "name": "financials_address_bech32_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "bech32"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.financials_entity_settings": {
+      "name": "financials_entity_settings",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'Your Entity'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.financials_output": {
+      "name": "financials_output",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "transaction_id": {
+          "name": "transaction_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "hash": {
+          "name": "hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "index": {
+          "name": "index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "unit": {
+          "name": "unit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quantity": {
+          "name": "quantity",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "from_address_id": {
+          "name": "from_address_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "to_address_id": {
+          "name": "to_address_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "financials_output_dedupe_idx": {
+          "name": "financials_output_dedupe_idx",
+          "columns": [
+            {
+              "expression": "transaction_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "hash",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "index",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "unit",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "from_address_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "to_address_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "financials_output_transaction_id_financials_transaction_id_fk": {
+          "name": "financials_output_transaction_id_financials_transaction_id_fk",
+          "tableFrom": "financials_output",
+          "tableTo": "financials_transaction",
+          "columnsFrom": [
+            "transaction_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "financials_output_from_address_id_financials_address_id_fk": {
+          "name": "financials_output_from_address_id_financials_address_id_fk",
+          "tableFrom": "financials_output",
+          "tableTo": "financials_address",
+          "columnsFrom": [
+            "from_address_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "financials_output_to_address_id_financials_address_id_fk": {
+          "name": "financials_output_to_address_id_financials_address_id_fk",
+          "tableFrom": "financials_output",
+          "tableTo": "financials_address",
+          "columnsFrom": [
+            "to_address_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.financials_transaction_tag": {
+      "name": "financials_transaction_tag",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "transaction_id": {
+          "name": "transaction_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "financials_transaction_tag_tx_name_idx": {
+          "name": "financials_transaction_tag_tx_name_idx",
+          "columns": [
+            {
+              "expression": "transaction_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "financials_transaction_tag_transaction_id_fk": {
+          "name": "financials_transaction_tag_transaction_id_fk",
+          "tableFrom": "financials_transaction_tag",
+          "tableTo": "financials_transaction",
+          "columnsFrom": [
+            "transaction_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.financials_transaction": {
+      "name": "financials_transaction",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "wallet_id": {
+          "name": "wallet_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hash": {
+          "name": "hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "block": {
+          "name": "block",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "block_height": {
+          "name": "block_height",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "block_time": {
+          "name": "block_time",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "slot": {
+          "name": "slot",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "index": {
+          "name": "index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fees": {
+          "name": "fees",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "deposit": {
+          "name": "deposit",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "net_lovelace": {
+          "name": "net_lovelace",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "wallet_is_input": {
+          "name": "wallet_is_input",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "parser_version": {
+          "name": "parser_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "size": {
+          "name": "size",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "invalid_before": {
+          "name": "invalid_before",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "invalid_hereafter": {
+          "name": "invalid_hereafter",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "utxo_count": {
+          "name": "utxo_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "withdrawal_count": {
+          "name": "withdrawal_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "mir_cert_count": {
+          "name": "mir_cert_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "delegation_count": {
+          "name": "delegation_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "stake_cert_count": {
+          "name": "stake_cert_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "pool_update_count": {
+          "name": "pool_update_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "pool_retire_count": {
+          "name": "pool_retire_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "asset_mint_or_burn_count": {
+          "name": "asset_mint_or_burn_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "redeemer_count": {
+          "name": "redeemer_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "valid_contract": {
+          "name": "valid_contract",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "output_amount": {
+          "name": "output_amount",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "withdrawals": {
+          "name": "withdrawals",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "utxo_detail": {
+          "name": "utxo_detail",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "parsed_at": {
+          "name": "parsed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "financials_transaction_wallet_hash_idx": {
+          "name": "financials_transaction_wallet_hash_idx",
+          "columns": [
+            {
+              "expression": "wallet_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "hash",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "financials_transaction_wallet_block_height_idx": {
+          "name": "financials_transaction_wallet_block_height_idx",
+          "columns": [
+            {
+              "expression": "wallet_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "block_height",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "financials_transaction_wallet_id_financials_wallet_id_fk": {
+          "name": "financials_transaction_wallet_id_financials_wallet_id_fk",
+          "tableFrom": "financials_transaction",
+          "tableTo": "financials_wallet",
+          "columnsFrom": [
+            "wallet_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "financials_transaction_account_id_financials_account_id_fk": {
+          "name": "financials_transaction_account_id_financials_account_id_fk",
+          "tableFrom": "financials_transaction",
+          "tableTo": "financials_account",
+          "columnsFrom": [
+            "account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.financials_wallet": {
+      "name": "financials_wallet",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "address_id": {
+          "name": "address_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_synced_at": {
+          "name": "last_synced_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "financials_wallet_address_id_financials_address_id_fk": {
+          "name": "financials_wallet_address_id_financials_address_id_fk",
+          "tableFrom": "financials_wallet",
+          "tableTo": "financials_address",
+          "columnsFrom": [
+            "address_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "financials_wallet_name_unique": {
+          "name": "financials_wallet_name_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
