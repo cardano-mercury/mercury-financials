@@ -66,22 +66,31 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
 
+      # The release has to pass the same gate as anything else, and that gate includes
+      # `prettier --check`. So the files this workflow writes must be formatted, which means Prettier
+      # has to be installed here.
+      - run: npm ci
+
+      # Ask the tool, do not count files. A set of `none` fragments is a perfectly valid set that
+      # releases nothing, so counting files would send this workflow off to assemble a release that
+      # `assemble` then rightly refuses to make, and the run would fail on development for no reason.
       - name: Anything to release?
         id: pending
         run: |
           set -euo pipefail
-          count="$(find .changes/unreleased -name '*.md' | wc -l)"
-          echo "count=$count" >> "$GITHUB_OUTPUT"
-          if [ "$count" -eq 0 ]; then
-            echo "::notice::No pending change fragments. Nothing to release."
+          version="$(node scripts/changes.mjs next)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [ -z "$version" ]; then
+            echo "::notice::Nothing pending that moves the version. No release to open."
           fi
 
       # Assemble on a branch: bump package.json, write the CHANGELOG section, delete the fragments.
       # The branch is rebuilt from development every time, so it always reflects the current state
       # rather than accumulating stale commits.
       - name: Assemble the release
-        if: steps.pending.outputs.count != '0'
+        if: steps.pending.outputs.version != ''
         id: assemble
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
@@ -93,13 +102,18 @@ jobs:
           version="$(node scripts/changes.mjs assemble "$(date -u +%Y-%m-%d)")"
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
+          # Belt and braces. The generator produces Prettier-clean output, but a release that cannot
+          # pass its own `lint` can never merge, and that failure would only surface here, on the one
+          # pull request nobody can bypass. Formatting what we just wrote costs nothing.
+          npx prettier --write CHANGELOG.md package.json
+
           git checkout -B "release/v$version"
           git add -A
           git commit -m "Release v$version"
           git push --force origin "release/v$version"
 
       - name: Open or update the pull request
-        if: steps.pending.outputs.count != '0'
+        if: steps.pending.outputs.version != ''
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.assemble.outputs.version }}

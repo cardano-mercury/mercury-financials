@@ -20,6 +20,7 @@
  * Commands:
  *   add <bump> <type> <slug> "<text>"   write a fragment
  *   check                               validate the pending fragments (CI)
+ *   next                                print the version a release would be, or nothing at all
  *   preview                             what would be released, and as what version
  *   assemble                            apply it: bump package.json, write CHANGELOG, clear fragments
  */
@@ -172,6 +173,20 @@ if (cmd === 'add') {
 		rel.map((f) => f.bump)
 	);
 	console.log(`${frags.length} pending fragment(s), all valid. Next version would be ${version}.`);
+} else if (cmd === 'next') {
+	// Prints the version a release would carry, or nothing when there is nothing to release. CI asks
+	// this rather than counting files: a set of `none` fragments is a real, valid set that releases
+	// nothing, and counting them would send the release workflow off to assemble a release that
+	// `assemble` then rightly refuses to make.
+	const frags = releasable(fragments());
+	if (frags.length) {
+		console.log(
+			nextVersion(
+				readPkg().version,
+				frags.map((f) => f.bump)
+			)
+		);
+	}
 } else if (cmd === 'preview') {
 	const frags = releasable(fragments());
 	if (!frags.length) {
@@ -200,9 +215,14 @@ if (cmd === 'add') {
 	const changelog = fs.readFileSync(CHANGELOG, 'utf8');
 	const anchor = '<!-- new releases go here -->';
 	if (!changelog.includes(anchor)) die(`CHANGELOG.md is missing the "${anchor}" marker`);
+
+	// `trimEnd` matters. The anchor is already followed by a blank line and the previous version's
+	// heading, so leaving the section's own trailing newline in place produces two blank lines before
+	// that heading, Prettier objects, and `lint` fails on the release pull request. A release that
+	// cannot pass its own gate can never merge.
 	fs.writeFileSync(
 		CHANGELOG,
-		changelog.replace(anchor, `${anchor}\n\n${renderSection(version, frags, date)}`)
+		changelog.replace(anchor, `${anchor}\n\n${renderSection(version, frags, date).trimEnd()}`)
 	);
 
 	pkg.version = version;
@@ -214,5 +234,5 @@ if (cmd === 'add') {
 
 	console.log(version);
 } else {
-	die('usage: changes.mjs <add|check|preview|assemble>');
+	die('usage: changes.mjs <add|check|next|preview|assemble>');
 }
