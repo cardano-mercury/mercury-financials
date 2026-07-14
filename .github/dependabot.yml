@@ -14,6 +14,11 @@ version: 2
 updates:
   - package-ecosystem: npm
     directory: /
+    # Dependabot targets the repository's default branch unless told otherwise, which here is `main`.
+    # main is the released branch: nothing lands on it except a release, and a dependency bump that
+    # arrived there directly would skip the staging branch, skip its own release, and leave main and
+    # development permanently diverged. Work goes to development, like all other work.
+    target-branch: development
     schedule:
       interval: weekly
       day: monday
@@ -71,6 +76,7 @@ updates:
 
   - package-ecosystem: github-actions
     directory: /
+    target-branch: development
     schedule:
       interval: weekly
       day: monday
@@ -102,6 +108,7 @@ updates:
 
   - package-ecosystem: docker
     directory: /
+    target-branch: development
     schedule:
       interval: weekly
       day: monday
