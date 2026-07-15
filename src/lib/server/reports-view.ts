@@ -5,8 +5,8 @@ const fmt = (lovelace: bigint) => (lovelace === 0n ? '–' : formatAda(lovelace,
 const line = (l: StatementLine) => ({ name: l.account.name, amount: fmt(l.amount) });
 
 /**
- * The reports, formatted for display. Shared by /reports and the public read-only /demo so both
- * render identical statements from one code path; the Statements component consumes this shape.
+ * The reports, formatted for display for the /reports page. The Statements component consumes this
+ * shape.
  */
 export async function buildReportsView() {
 	const reports = await buildReports();
