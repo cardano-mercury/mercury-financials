@@ -7,8 +7,8 @@ type Cell = string | number;
 /**
  * Excel and Google Sheets treat a cell opening with =, +, - or @ as a formula rather than as text,
  * and run it when the file is opened. Every free-text value we export is a candidate: counterparty
- * names and the entity name are typed by the operator, tags are free-form, and DEMO_MODE publishes
- * these exports to strangers, so the operator's text lands in other people's spreadsheets.
+ * names and the entity name are typed by the operator, and tags are free-form, so the operator's
+ * text can land in someone else's spreadsheet once an export is shared (say, with an accountant).
  *
  * A leading minus is the awkward case, because a negative amount is not a formula. Guard it only
  * when the cell is not simply a number.

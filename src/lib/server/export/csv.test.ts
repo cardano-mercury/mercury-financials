@@ -81,8 +81,8 @@ describe('toCsv', () => {
 	/**
 	 * A cell that opens with =, +, - or @ is treated as a formula by Excel and Google Sheets, not as
 	 * text, and it runs when the file is opened. Counterparty names, tags and the entity name are all
-	 * free text, and DEMO_MODE hands these exports to strangers, so the values in them reach other
-	 * people's spreadsheets. Prefix the cell so it is read as text.
+	 * free text, and an export can be shared onward (say, with an accountant), so the values in them
+	 * can reach other people's spreadsheets. Prefix the cell so it is read as text.
 	 */
 	it.each(['=1+1', '+1', '-1+1', '@SUM(A1)', "=cmd|'/c calc'!A0"])(
 		'neutralises the formula %s',

@@ -10,6 +10,16 @@ time, which is why two branches in flight never conflict over a changelog entry.
 
 <!-- new releases go here -->
 
+## [0.2.0] - 2026-07-16
+
+### Added
+
+- A loud shared-instance warning banner, shown on every page when DEMO_MODE is on. The app is single-entity, so everyone signed into a hosted instance shares and can edit the same books; the banner makes that impossible to miss.
+
+### Removed
+
+- Removed the separate public read-only `/demo` statements page. Reviewers are better served by a signed-in walkthrough of the real tool. Kept the tidier header and footer that came with it.
+
 ## [0.1.1] - 2026-07-14
 
 ### Security

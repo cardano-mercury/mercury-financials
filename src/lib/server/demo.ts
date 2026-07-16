@@ -1,13 +1,14 @@
 import { env } from '$env/dynamic/private';
 
 /**
- * The hosted Catalyst demo (demo-financials.cardano-mercury.com) needs reviewers to see real,
- * populated statements without an account. `DEMO_MODE=true` opens an unauthenticated, read-only
- * view of the instance's reports at /demo, plus their CSV exports.
+ * Marks this instance as a shared, public demo. The app is single-entity by design (one set of
+ * wallets and books, no per-user isolation), so a hosted instance that lets several people sign in
+ * is a shared sandbox: everyone sees and can edit the same data. `DEMO_MODE=true` surfaces that with
+ * a prominent banner on every page so nobody mistakes it for their own private books.
  *
- * Read-only is the whole point: /demo never exposes a write action, and nothing under it can sync,
- * re-categorise, rename, or add a wallet. It is off by default, so a private instance run by an
- * actual CFO does not accidentally publish its books.
+ * It is off by default, so a private instance run by an actual CFO never shows the banner. This flag
+ * no longer serves a separate read-only `/demo` page; that was removed. Real multi-tenancy (issue
+ * #21) would make this flag unnecessary; a daily reset of the shared data is proposed in #22.
  *
  * Deliberately not named `PUBLIC_DEMO`: SvelteKit reserves the `PUBLIC_` prefix for variables it
  * exposes to the browser, and `$env/dynamic/private` therefore refuses to read them.
