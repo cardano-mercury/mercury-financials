@@ -9,6 +9,7 @@ import {
 	type LedgerTx
 } from './reports';
 import type { Account, NormalBalance } from '$lib/server/db/schema';
+import { CHART_OF_ACCOUNTS } from '$lib/server/db/accounts-data';
 
 function makeAccount(p: Partial<Account> & { id: number; normalBalance: NormalBalance }): Account {
 	return {
@@ -104,5 +105,67 @@ describe('reports engine', () => {
 		const bs = balanceSheet(balances, accounts, pl.profitForPeriod);
 		expect(bs.totalAssets).toBe(3_460_000n);
 		expect(bs.totalEquity + bs.totalLiabilities).toBe(bs.totalAssets);
+	});
+});
+
+// The Statements component keys its {#each} rows by account id, not name, because account display
+// names are not unique within a section (the real chart has "Loans", "Investments", "Others" and
+// more appearing twice). Keying by name produced duplicate keys and Svelte threw each_key_duplicate,
+// which aborted the client render so the tabs, CSV buttons and header never appeared. These tests
+// lock in the two facts that fix depends on.
+describe('statement rows are safe to key by account id', () => {
+	it('keeps ids unique per section even when names collide', () => {
+		// Two "Investments" in Assets, two "Loans" in Expenses: same names, different ids.
+		const dup = [
+			makeAccount({
+				id: 10,
+				statement: 'balance_sheet',
+				section: 'Assets',
+				normalBalance: 'debit',
+				name: 'Investments'
+			}),
+			makeAccount({
+				id: 11,
+				statement: 'balance_sheet',
+				section: 'Assets',
+				normalBalance: 'debit',
+				name: 'Investments'
+			}),
+			makeAccount({
+				id: 12,
+				statement: 'profit_loss',
+				section: 'Expense',
+				normalBalance: 'debit',
+				name: 'Loans'
+			}),
+			makeAccount({
+				id: 13,
+				statement: 'profit_loss',
+				section: 'Expense',
+				normalBalance: 'debit',
+				name: 'Loans'
+			})
+		];
+		const bal = new Map<number, bigint>(dup.map((a) => [a.id, 1_000_000n]));
+
+		const bs = balanceSheet(bal, dup, 0n);
+		const pl = profitAndLoss(bal, dup);
+
+		const assetNames = bs.assets.map((l) => l.account.name);
+		const assetIds = bs.assets.map((l) => l.account.id);
+		expect(assetNames).toEqual(['Investments', 'Investments']); // names collide
+		expect(new Set(assetIds).size).toBe(assetIds.length); // ids do not
+
+		const expenseIds = pl.expenses.map((l) => l.account.id);
+		expect(new Set(expenseIds).size).toBe(expenseIds.length);
+	});
+
+	it('confirms the real chart actually has colliding names but unique paths', () => {
+		const inSection = CHART_OF_ACCOUNTS.filter((a) => a.statement);
+		const names = inSection.map((a) => a.name);
+		const paths = inSection.map((a) => a.path);
+		// Names repeat (that is the hazard), paths are unique (a safe alternative key).
+		expect(new Set(names).size).toBeLessThan(names.length);
+		expect(new Set(paths).size).toBe(paths.length);
 	});
 });

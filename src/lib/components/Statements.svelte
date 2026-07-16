@@ -8,6 +8,9 @@
 	 * literal route id at the call site.
 	 */
 	interface Line {
+		/** The account id, unique per row. Used as the {#each} key: account names are not unique
+		 * within a section (e.g. "Loans" appears under both non-current and current assets). */
+		id: number;
 		name: string;
 		amount: string;
 	}
@@ -15,7 +18,7 @@
 	interface Props {
 		entityName: string;
 		trialBalance: {
-			rows: { name: string; debit: string; credit: string }[];
+			rows: { id: number; name: string; debit: string; credit: string }[];
 			totalDebit: string;
 			totalCredit: string;
 		};
@@ -84,7 +87,7 @@
 		<table class="mono mt-5 w-full text-sm">
 			<tbody>
 				<tr><td class="py-2 font-bold uppercase">Assets</td><td></td></tr>
-				{#each balanceSheet.assets as l (l.name)}
+				{#each balanceSheet.assets as l (l.id)}
 					<tr
 						><td class="py-1 pl-4 text-ink-600">{l.name}</td><td class="py-1 text-right"
 							>{l.amount}</td
@@ -97,7 +100,7 @@
 					>
 				</tr>
 				<tr><td class="pt-4 font-bold uppercase">Equity</td><td></td></tr>
-				{#each balanceSheet.equity as l (l.name)}
+				{#each balanceSheet.equity as l (l.id)}
 					<tr
 						><td class="py-1 pl-4 text-ink-600">{l.name}</td><td class="py-1 text-right"
 							>{l.amount}</td
@@ -115,7 +118,7 @@
 					>
 				</tr>
 				<tr><td class="pt-4 font-bold uppercase">Liabilities</td><td></td></tr>
-				{#each balanceSheet.liabilities as l (l.name)}
+				{#each balanceSheet.liabilities as l (l.id)}
 					<tr
 						><td class="py-1 pl-4 text-ink-600">{l.name}</td><td class="py-1 text-right"
 							>{l.amount}</td
@@ -138,7 +141,7 @@
 		<table class="mono mt-5 w-full text-sm">
 			<tbody>
 				<tr><td class="py-2 font-bold uppercase">Income</td><td></td></tr>
-				{#each profitAndLoss.income as l (l.name)}
+				{#each profitAndLoss.income as l (l.id)}
 					<tr
 						><td class="py-1 pl-4 text-ink-600">{l.name}</td><td class="py-1 text-right"
 							>{l.amount}</td
@@ -151,7 +154,7 @@
 					>
 				</tr>
 				<tr><td class="pt-4 font-bold uppercase">Expenses</td><td></td></tr>
-				{#each profitAndLoss.expenses as l (l.name)}
+				{#each profitAndLoss.expenses as l (l.id)}
 					<tr
 						><td class="py-1 pl-4 text-ink-600">{l.name}</td><td class="py-1 text-right"
 							>{l.amount}</td
@@ -168,7 +171,7 @@
 						>{profitAndLoss.profitBeforeTax}</td
 					>
 				</tr>
-				{#each profitAndLoss.tax as l (l.name)}
+				{#each profitAndLoss.tax as l (l.id)}
 					<tr
 						><td class="py-1 pl-4 text-ink-600">{l.name}</td><td class="py-1 text-right"
 							>{l.amount}</td
@@ -193,7 +196,7 @@
 				</tr>
 			</thead>
 			<tbody>
-				{#each trialBalance.rows as r (r.name)}
+				{#each trialBalance.rows as r (r.id)}
 					<tr class="border-t border-ink-100">
 						<td class="py-1.5 pr-3 text-ink-600">{r.name}</td>
 						<td class="py-1.5 text-right">{r.debit}</td>
