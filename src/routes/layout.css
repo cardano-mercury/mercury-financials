@@ -225,4 +225,39 @@ body {
 		font-family: var(--font-mono);
 		font-variant-numeric: tabular-nums;
 	}
+
+	/*
+	 * Shared-instance warning. Shown across the top of every page when DEMO_MODE is on, because the
+	 * app is single-entity: everyone signed into the hosted instance shares and can edit one set of
+	 * books. Deliberately loud (full-bleed amber, high contrast) so nobody mistakes it for private.
+	 */
+	.demo-banner {
+		background: #f59e0b;
+		color: #1c1400;
+		border-bottom: 1px solid #b45309;
+		font-weight: 600;
+	}
+	.demo-banner a {
+		color: #1c1400;
+		text-decoration: underline;
+		text-underline-offset: 2px;
+	}
+	@media (prefers-color-scheme: dark) {
+		:root:not([data-theme='light']) .demo-banner {
+			background: #7c4a03;
+			color: #ffe9c2;
+			border-bottom-color: #a86416;
+		}
+		:root:not([data-theme='light']) .demo-banner a {
+			color: #ffe9c2;
+		}
+	}
+	[data-theme='dark'] .demo-banner {
+		background: #7c4a03;
+		color: #ffe9c2;
+		border-bottom-color: #a86416;
+	}
+	[data-theme='dark'] .demo-banner a {
+		color: #ffe9c2;
+	}
 }
