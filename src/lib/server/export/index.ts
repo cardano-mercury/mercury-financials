@@ -17,9 +17,8 @@ export function isExportType(value: string): value is ExportType {
 }
 
 /**
- * Build one export by name. Shared by the signed-in /export route and the read-only /demo/export
- * route so the two cannot drift into producing different CSVs for the same statement. Neither
- * caller may pass an unvalidated string: guard with `isExportType` first.
+ * Build one export by name, for the /export route. The caller may not pass an unvalidated string:
+ * guard with `isExportType` first.
  */
 export async function buildExport(type: ExportType): Promise<CsvFile> {
 	if (type === 'register') {

@@ -2,13 +2,10 @@
 	import type { Snippet } from 'svelte';
 
 	/**
-	 * The Trial Balance / Balance Sheet / P&L tables. Rendered by both the signed-in /reports page
-	 * and the read-only public /demo page, so the two can never show different numbers for the same
-	 * books.
+	 * The Trial Balance / Balance Sheet / P&L tables, rendered by the /reports page.
 	 *
-	 * The export links are a caller-supplied snippet rather than a prop: the two pages point at
-	 * different export routes (the demo's are unauthenticated) and offer different sets of them, and
-	 * resolve() needs a literal route id at the call site.
+	 * The export links are a caller-supplied snippet rather than a prop because resolve() needs a
+	 * literal route id at the call site.
 	 */
 	interface Line {
 		name: string;
@@ -57,13 +54,17 @@
 </script>
 
 <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
-	<div class="flex gap-1">
+	<div class="inline-flex gap-1 rounded-lg border border-ink-200 bg-ink-100 p-1" role="tablist">
 		{#each tabs as t (t.id)}
 			<button
-				class="rounded-md px-3 py-1.5 text-sm font-medium"
+				role="tab"
+				aria-selected={tab === t.id}
+				class="rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
 				class:bg-surface={tab === t.id}
 				class:text-ink-900={tab === t.id}
+				class:shadow-sm={tab === t.id}
 				class:text-ink-400={tab !== t.id}
+				class:hover:text-ink-600={tab !== t.id}
 				onclick={() => (tab = t.id)}
 			>
 				{t.label}
