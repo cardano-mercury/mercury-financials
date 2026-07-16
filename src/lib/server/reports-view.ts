@@ -2,7 +2,11 @@ import { buildReports, type StatementLine } from '$lib/server/reports';
 import { formatAda } from '$lib/money';
 
 const fmt = (lovelace: bigint) => (lovelace === 0n ? '–' : formatAda(lovelace, { decimals: 2 }));
-const line = (l: StatementLine) => ({ name: l.account.name, amount: fmt(l.amount) });
+const line = (l: StatementLine) => ({
+	id: l.account.id,
+	name: l.account.name,
+	amount: fmt(l.amount)
+});
 
 /**
  * The reports, formatted for display for the /reports page. The Statements component consumes this
@@ -16,6 +20,7 @@ export async function buildReportsView() {
 		entityName: reports.entityName,
 		trialBalance: {
 			rows: tb.rows.map((r) => ({
+				id: r.account.id,
 				name: r.account.path,
 				debit: fmt(r.debit),
 				credit: fmt(r.credit)
