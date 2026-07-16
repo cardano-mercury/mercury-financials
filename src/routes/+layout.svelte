@@ -17,6 +17,19 @@
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
 
 <div class="flex min-h-screen flex-col">
+	{#if data.demoMode}
+		<div class="demo-banner">
+			<div class="mx-auto flex max-w-6xl items-center gap-3 px-4 py-2.5 text-sm">
+				<span aria-hidden="true" class="text-lg leading-none">⚠</span>
+				<p>
+					<span class="font-bold uppercase tracking-wide">Shared demo instance.</span>
+					The data here is public and shared by everyone who signs in. Anything you add or change is visible
+					to others and may be wiped without notice. Do not enter anything private.
+				</p>
+			</div>
+		</div>
+	{/if}
+
 	<header class="border-b border-ink-200 bg-surface">
 		<div class="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
 			<a href={resolve('/')} class="flex items-baseline gap-2">

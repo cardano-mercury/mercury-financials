@@ -1,6 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { signupsOpen } from '$lib/server/auth-policy';
+import { demoModeEnabled } from '$lib/server/demo';
 import type { LayoutServerLoad } from './$types';
 
 const AUTH_ROUTES = ['/login', '/signup'];
@@ -17,7 +18,8 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 			entityName: 'Your Entity',
 			wallets: [],
 			hasWallets: false,
-			signupsOpen: await signupsOpen()
+			signupsOpen: await signupsOpen(),
+			demoMode: demoModeEnabled()
 		};
 	}
 
@@ -31,6 +33,7 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
 		entityName: entity?.name ?? 'Your Entity',
 		wallets: wallets.map((w) => ({ id: w.id, name: w.name, bech32: w.address.bech32 })),
 		hasWallets: wallets.length > 0,
-		signupsOpen: false
+		signupsOpen: false,
+		demoMode: demoModeEnabled()
 	};
 };
