@@ -45,7 +45,7 @@ jobs:
       version: ${{ steps.v.outputs.version }}
       sha: ${{ steps.v.outputs.sha }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # Check out the exact commit CI validated, not whatever main happens to be now.
           ref: ${{ github.event.workflow_run.head_sha || github.ref }}
@@ -86,21 +86,21 @@ jobs:
             target: migrate
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.guard.outputs.sha }}
 
       - uses: docker/setup-buildx-action@v3
 
       # The built-in GITHUB_TOKEN can push to this repo's own packages. No PAT to manage.
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}
           tags: |
@@ -111,7 +111,7 @@ jobs:
       # Single-context build: @cardano-mercury/core comes from npm, so nothing outside this repo is
       # needed. amd64 only; add linux/arm64 if the host ever turns out to be ARM (it roughly doubles
       # build time, so it is not on by default).
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           target: ${{ matrix.target }}
@@ -146,14 +146,14 @@ jobs:
       # The same org App as release-pr.yml, so a release is attributed to the Mercury Release Bot
       # rather than to a generic action. Nothing here depends on the token triggering a workflow (no
       # workflow runs on tags), so GITHUB_TOKEN would work; the App is for a coherent audit trail.
-      - uses: actions/create-github-app-token@v2
+      - uses: actions/create-github-app-token@v3
         id: app-token
         if: vars.RELEASE_APP_ID != ''
         with:
           app-id: ${{ vars.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ needs.guard.outputs.sha }}
           fetch-depth: 0
